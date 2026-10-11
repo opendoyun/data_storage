@@ -1,0 +1,12 @@
+{
+  "name": "starborn-princess",
+  "version": "0.1.0",
+  "description": "별의 공주 - 육성 시뮬레이션 프로토타입 (브라우저 + 헤드리스 밸런스 시뮬레이터)",
+  "type": "module",
+  "scripts": {
+    "serve": "python3 -m http.server 8080",
+    "sim": "node tools/simulate.mjs",
+    "test": "node tools/test.mjs"
+  },
+  "license": "MIT"
+}
