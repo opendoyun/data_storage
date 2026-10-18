@@ -11,6 +11,7 @@ export const ASSETS_DIR = join(GAME_DIR, 'assets');
 export const MANIFEST_PATH = join(ASSETS_DIR, 'manifest.json');
 export const PROMPTS_MD_PATH = join(ASSETS_DIR, 'gemini-prompts.md');
 export const POSTPROCESS_PY = join(TOOLS_DIR, 'postprocess.py');
+export const isMain = (url) => !!process.argv[1] && fileURLToPath(url) === resolve(process.argv[1]);
 
 // ── 인자 ────────────────────────────────────────────────────────────────────
 // --key=value, --flag (true), --no-flag (false). 나머지는 _ 배열.
