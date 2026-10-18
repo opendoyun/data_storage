@@ -47,7 +47,8 @@ const NO_KEY_GUIDE = `
 키를 채팅에 붙여넣지 마세요. 환경변수로만 넣습니다.
   1) Google AI Studio(aistudio.google.com) → Get API key 에서 키 발급 (이미지 모델은 결제 연결이 필요할 수 있음)
   2-a) Claude Code 클라우드 세션: 세션 제목 표시줄의 클라우드 환경 메뉴 → Edit →
-       환경 변수에 GEMINI_API_KEY=<키> 추가 → 새 세션을 시작하면 적용됩니다.
+       Network secrets(옛 앱: API credentials) 섹션이 있으면 거기에, 없으면 환경 변수로
+       GEMINI_API_KEY=<키> 추가 → 새 세션을 시작하면 적용됩니다.
   2-b) 내 컴퓨터: export GEMINI_API_KEY=<키>   (Windows PowerShell: $env:GEMINI_API_KEY="<키>")
   3) cd game && node tools/gemini/generate.mjs --dry-run      # 계획 확인
      node tools/gemini/generate.mjs --keys=ref/luna_sheet     # 캐릭터 시트 먼저 → 눈으로 확인
@@ -121,18 +122,29 @@ async function listModels(api, apiKey) {
 }
 const priceOf = (model) => PRICE_HINT.find(([re]) => re.test(model ?? ''))?.[1] ?? 0.039;
 
-function extractImage(json) {
+// 응답에서 최종 이미지를 꺼낸다. candidates[].content.parts[].inlineData (REST는 camelCase, 혹시 몰라 snake_case도).
+// 생각하는 모델(…-pro-image 등)은 중간 구도 확인용 "thought" 이미지를 함께 줄 수 있으므로 thought:true 파트는 건너뛰고,
+// 남은 이미지 중 마지막 것(최종 결과)을 쓴다. thought 이미지밖에 없으면 그중 마지막 것이 최종본이다.
+export function extractImage(json) {
   const cands = json?.candidates ?? [];
-  let best = null;
-  for (const c of cands) for (const p of c?.content?.parts ?? []) {
-    const d = p.inlineData ?? p.inline_data;
-    if (d?.data && /^image\//.test(d.mimeType ?? d.mime_type ?? 'image/')) { if (!best || d.data.length > best.data.length) best = { data: d.data, mime: d.mimeType ?? d.mime_type }; }
+  const finals = [], thoughts = [];
+  for (const c of cands) {
+    for (const p of c?.content?.parts ?? []) {
+      const d = p?.inlineData ?? p?.inline_data;
+      const mime = d?.mimeType ?? d?.mime_type ?? '';
+      if (!d?.data || (mime && !/^image\//.test(mime))) continue;
+      (p.thought ? thoughts : finals).push({ data: d.data, mime: mime || null });
+    }
+    if (finals.length) break; // 첫 번째로 이미지를 준 후보만 쓴다
   }
-  if (best) return { buf: Buffer.from(best.data, 'base64'), mime: best.mime };
-  const why = [json?.promptFeedback?.blockReason && `blockReason=${json.promptFeedback.blockReason}`,
+  const best = finals.at(-1) ?? thoughts.at(-1);
+  if (best) return { buf: Buffer.from(best.data, 'base64'), mime: best.mime, fromThought: !finals.length };
+  const blockReason = json?.promptFeedback?.blockReason;
+  const why = [blockReason && `blockReason=${blockReason}`,
     cands[0]?.finishReason && `finishReason=${cands[0].finishReason}`,
-    cands.flatMap(c => (c?.content?.parts ?? []).map(p => p.text).filter(Boolean)).join(' ').slice(0, 200)].filter(Boolean).join(' · ');
-  return { none: true, why: why || '응답에 이미지가 없음' };
+    cands[0]?.finishMessage,
+    cands.flatMap(c => (c?.content?.parts ?? []).filter(p => !p.thought).map(p => p.text).filter(Boolean)).join(' ').slice(0, 200)].filter(Boolean).join(' · ');
+  return { none: true, blocked: !!blockReason, why: why || '응답에 이미지가 없음' };
 }
 
 function readLog(path) {
@@ -165,7 +177,11 @@ async function main() {
   if (!dry) reexecForProxy(base);
 
   if (args['list-models']) {
-    const models = await listModels(api, apiKey);
+    let models;
+    try { models = await listModels(api, apiKey); } catch (e) {
+      console.error(e.message + ([400, 401, 403].includes(e.status) ? '\nAPI 키가 잘못되었거나 이 키로 Generative Language API를 쓸 수 없습니다.' : ''));
+      return e.status ? 3 : 1;
+    }
     const ranked = rankImageModels(models);
     console.log(`이미지 생성 가능 모델 (선호 순):\n${ranked.map((m, i) => `  ${i + 1}. ${m.id}${m.displayName ? ` — ${m.displayName}` : ''}`).join('\n') || '  (없음)'}`);
     return 0;
@@ -232,7 +248,7 @@ async function main() {
       model = ranked[0].id;
       console.log(`모델 자동 선택: ${model}${ranked.length > 1 ? ` (후보: ${ranked.slice(1, 4).map(m => m.id).join(', ')})` : ''}`);
     } catch (e) {
-      console.error(e.message + ([401, 403].includes(e.status) ? '\nAPI 키가 잘못되었거나 이 키로 Generative Language API를 쓸 수 없습니다.' : ''));
+      console.error(e.message + ([400, 401, 403].includes(e.status) ? '\nAPI 키가 잘못되었거나 이 키로 Generative Language API를 쓸 수 없습니다.' : ''));
       return e.status ? 3 : 1;
     }
   } else console.log(`모델: ${model}`);
@@ -281,8 +297,12 @@ async function main() {
       const r = await call('POST', `${api}/models/${encodeURIComponent(model)}:generateContent`, apiKey, body);
       if (r.status === 200) {
         const img = extractImage(r.json);
-        if (!img.none) return { ...img, attempts, variant: v.name };
-        if (++noImage >= 2 || attempts > retries) throw new Error(`이미지 없음 (${img.why})`);
+        if (!img.none) {
+          if (!L.sniffMime(img.buf)) throw new Error(`응답 이미지를 읽을 수 없음 (mime=${img.mime}, ${img.buf.length} bytes)`);
+          return { ...img, attempts, variant: v.name };
+        }
+        // 프롬프트 자체가 막힌 경우(promptFeedback.blockReason)는 같은 요청을 다시 보내도 결과가 같다.
+        if (img.blocked || ++noImage >= 2 || attempts > retries) throw new Error(`이미지 없음 (${img.why})`);
         await sleep(backoffBase);
         continue;
       }
@@ -290,6 +310,11 @@ async function main() {
       if (r.status === 400 && /modalit|image_?config|aspect|responseMime|generation_?config/i.test(msg) && vi < VARIANTS.length - 1) {
         if (shared.variant === vi) { shared.variant = vi + 1; console.log(`  · 요청 형태 조정: ${v.name} 미지원 → ${VARIANTS[vi + 1].name} (${msg.slice(0, 80)})`); }
         attempts--; continue;
+      }
+      // 무료 등급에서 이미지 모델 한도가 0인 경우: 기다려도 풀리지 않으므로 바로 멈춘다.
+      if (r.status === 429 && /limit:\s*0\b/.test(msg)) {
+        shared.fatal = `이 키의 프로젝트는 이 모델의 사용 한도가 0입니다 (무료 등급). AI Studio에서 결제를 연결하거나 다른 모델을 고르세요. HTTP 429: ${msg.slice(0, 200)}`;
+        throw new Error(shared.fatal);
       }
       if ((r.status === 0 || RETRYABLE.has(r.status)) && attempts <= retries) {
         const wait = retryDelayMs(r) ?? Math.min(64000, backoffBase * 2 ** (attempts - 1)) + Math.floor(Math.random() * backoffBase / 4);
@@ -325,7 +350,8 @@ async function main() {
       if (keepRaw) { const kr = join(keepRaw, `${p.e.key}.${ext}`); mkdirSync(dirname(kr), { recursive: true }); copyFileSync(raw, kr); }
       rmSync(raw, { force: true });
       Object.assign(rec, { status: 'ok', bytes: img.buf.length, mime: img.mime, attempts: img.attempts, variant: img.variant,
-        src: `${fit.srcWidth}x${fit.srcHeight}`, out: `${fit.width}x${fit.height}`, outBytes: fit.bytes, refs: attached, error: null });
+        src: `${fit.srcWidth}x${fit.srcHeight}`, out: `${fit.width}x${fit.height}`, outBytes: fit.bytes, refs: attached, error: null,
+        ...(img.fromThought ? { fromThought: true } : {}) });
       tally.ok++;
       console.log(`  ✓ ${p.e.key}  ${fit.srcWidth}×${fit.srcHeight} → ${fit.width}×${fit.height}  (${fmtMs(Date.now() - start)}, 시도 ${img.attempts})`);
       return true;

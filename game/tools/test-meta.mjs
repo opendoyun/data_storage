@@ -1,4 +1,5 @@
-// 메타 진행(GDD 4.9) 테스트: 별 조각 계산 · 해금 · 편지 진행 · 유산 순서 · 저장 스키마 이전/손상 복구 · 보너스 구매 · 앨범 HTML 이스케이프
+// 메타 진행(GDD 4.9) 테스트: 별 조각 계산 · 해금 · 편지 진행(저빈도 상한) · 유산 순서 · 저장 스키마 이전/손상 복구 · 보너스 구매
+//                          · 에필로그·해마다의 결정 기록 · 성격 지도(결정·반기는 성격·좁은 폭) · 앨범 HTML 이스케이프·조사
 // 사용: node tools/test-meta.mjs
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -162,6 +163,34 @@ t('후일담 편지: 첫 달성 → 1번, 이후 매 회차 달성한 모든 엔
   assert.equal(M.unreadLetterCount(r.meta, LET), 9, 'markLetterRead는 원본을 바꾸지 않는다');
 });
 
+t('편지는 저빈도: 이어지는 편지는 회차당 최대 2통(+ 처음 본 엔딩의 첫 편지), 오래된 엔딩부터', () => {
+  assert.equal(M.MAX_FOLLOWUP_LETTERS_PER_RUN, 2);
+  const L3 = (n) => Array.from({ length: n }, (_, i) => ({ title: `편지${i}`, text: '…' }));
+  const ids = ['queen', 'duchess', 'diplomat', 'chancellor', 'painter', 'writer', 'chef', 'saint'];
+  const SRC = { letters: Object.fromEntries([...ids, 'archmage', 'herb_doctor'].map(id => [id, L3(3)])), categoryLetters: {} };
+  // 구버전 기록을 옮겨 온 직후: 8개 엔딩의 편지가 하나도 열리지 않은 상태
+  let m = M.migrateMeta({ endings: ids });
+  let r = M.recordRun(m, fin('archmage'), day(1), SRC);
+  assert.deepEqual(r.letterUnlocks.map(l => l.key), ['queen:0', 'duchess:0', 'archmage:0'], '밀린 편지가 한꺼번에 쏟아지지 않는다');
+  assert.equal(m.endings.queen.name, '여왕', '구버전 기록(id만)은 엔딩 데이터의 이름으로'); assert.equal(m.endings.queen.cat, '왕실/정치');
+  assert.equal(r.letterUnlocks[0].endingName, '여왕');
+  assert.equal(r.letterUnlocks[0].from.name, '그 아이', '누가 보냈는지 모르는 편지를 이번 아이 이름으로 쓰지 않는다');
+  assert.equal(r.letterUnlocks[2].from.name, '루나', '이번 엔딩의 편지는 이번 아이가');
+  r = M.recordRun(r.meta, fin('chef'), day(2), SRC);
+  assert.deepEqual(r.letterUnlocks.map(l => l.key), ['chef:0', 'queen:1'], '다시 도달한 엔딩의 편지가 먼저');
+  // 끝까지 가면 모든 편지가 결국 도착한다
+  for (let runs = 0; runs < 40; runs++) {
+    r = M.recordRun(r.meta, fin('herb_doctor', { name: `아이${runs}` }), day((runs % 27) + 3), SRC);
+    assert.ok(r.letterUnlocks.length <= 3, '회차당 최대 3통');
+    if (!r.letterUnlocks.length) break;
+  }
+  assert.equal(M.letterInbox(r.meta, SRC).length, (ids.length + 2) * 3);
+  // 평소 플레이(매 회차 새 엔딩): 1 → 2 → 3 → 3 … 통
+  let n = M.emptyMeta(); const per = [];
+  for (const [i, id] of ids.entries()) { const x = M.recordRun(n, fin(id), day(i + 1), SRC); n = x.meta; per.push(x.letterUnlocks.length); }
+  assert.deepEqual(per, [1, 2, 3, 3, 3, 3, 3, 3]);
+});
+
 t('편지 데이터가 비어 있어도 진행은 저장되고, 나중에 채워지면 보인다', () => {
   const EMPTY = { letters: {}, categoryLetters: {} };
   let r = M.recordRun(M.emptyMeta(), fin('queen'), day(1), EMPTY);
@@ -222,7 +251,7 @@ t('순수성: 입력 meta를 바꾸지 않는다 · 결정적', () => {
 t('보너스 구매', () => {
   let m = M.emptyMeta();
   let r = M.buyBonus(m, 'purse');
-  assert.equal(r.ok, false); assert.match(r.reason, /모자랍니다/);
+  assert.equal(r.ok, false); assert.match(r.reason, /모자란다/);
   m = M.recordRun(m, fin('queen'), day(1)).meta;              // 3조각
   r = M.buyBonus(m, 'nope'); assert.equal(r.ok, false);
   r = M.buyBonus(m, 'purse'); assert.equal(r.ok, true);
@@ -235,6 +264,40 @@ t('보너스 구매', () => {
   const rich = M.migrateMeta({ shards: 10 });
   assert.equal(M.buyBonus(rich, 'keepsake').ok, false);
   assert.equal(M.startOptions(rich).bonuses.find(b => b.id === 'keepsake').available, false);
+  assert.equal(M.startOptions(rich).bonuses.find(b => b.id === 'keepsake').requirement, '첫 아이를 떠나보낸 뒤에');
+  // 상속 프로퍼티 이름은 보너스가 아니다
+  for (const id of ['constructor', 'toString', '__proto__']) assert.equal(M.buyBonus(rich, id).ok, false, id);
+  // 지난 아이의 선물: 설명에 그 아이 이름(조사 포함)과 능력
+  let k = M.recordRun(M.emptyMeta(), fin('queen', { name: '가을', str: 500 }), day(1)).meta;
+  assert.equal(M.startOptions(k).bonuses.find(b => b.id === 'keepsake').desc, '가을(여왕)이 두고 간 물건. 그 아이가 가장 잘하던 근력·매력 +' + M.KEEPSAKE_STAT_BONUS);
+  k = M.recordRun(M.emptyMeta(), fin('queen', { name: '루나', str: 500 }), day(1)).meta;
+  assert.match(M.startOptions(k).bonuses.find(b => b.id === 'keepsake').desc, /^루나\(여왕\)가 두고 간/);
+});
+
+t('손상된 저장: 상속 프로퍼티 이름·터무니없는 수·더 새 버전', () => {
+  const raw = JSON.parse('{"shards":3,"owned":["constructor","toString","purse"],"totalRuns":1e308,' +
+    '"endings":{"__proto__":{"count":2,"name":"x"},"queen":{"count":1,"last":{"name":"a","guardian":"toString"},"best":{"name":"a","guardian":"valueOf","score":5}}},' +
+    '"runs":[{"endingId":"queen","guardian":"hasOwnProperty","name":"b"},{"endingId":"__proto__","name":"c"}],"lettersRead":{"__proto__":true,"queen:0":1}}');
+  const m = M.migrateMeta(raw);
+  assert.deepEqual(m.owned, ['purse']);
+  assert.ok(Number.isFinite(m.shardsEarned) && m.shardsEarned === 3 + M.BONUS_MAP.purse.cost, '누적 조각이 NaN이 되지 않는다');
+  assert.equal(Object.getPrototypeOf(m.endings), Object.prototype, 'endings의 프로토타입이 바뀌지 않는다');
+  assert.deepEqual(Object.keys(m.endings), ['queen']);
+  assert.equal(m.endings.queen.last.guardian, 'knight'); assert.equal(m.endings.queen.best.guardian, 'knight');
+  assert.equal(m.runs.length, 1); assert.equal(m.runs[0].guardian, 'knight');
+  assert.ok(m.totalRuns <= 999999, '터무니없는 회차 수는 상한으로');
+  assert.deepEqual(Object.keys(m.lettersRead), ['queen:0']);
+  const so = M.startOptions(m);
+  assert.ok(so.guardians.find(g => g.id === 'knight').unlocked);
+  assert.ok(so.nextUnlock === null || Number.isFinite(so.nextUnlock.remaining));
+  assert.equal(M.newGameOptions(m, { guardian: 'toString', bonusIds: ['constructor', 'purse'] }).guardian, 'knight');
+  assert.deepEqual(M.newGameOptions(m, { guardian: 'toString', bonusIds: ['constructor', 'purse'] }).bonusIds, ['purse']);
+  assert.doesNotThrow(() => M.endingAlbum(m)); assert.doesNotThrow(() => M.letterInbox(m));
+  // 더 새 버전이 쓴 기록: 읽을 수 있는 만큼 읽되 원본은 백업 키에
+  const futureRaw = JSON.stringify({ v: M.META_VERSION + 1, shards: 4, endings: { queen: { count: 1 } }, somethingNew: [1, 2] });
+  const st = memStorage({ [M.META_KEY]: futureRaw });
+  const rep = M.loadMetaReport(st);
+  assert.equal(rep.status, 'newer'); assert.equal(rep.meta.shards, 4); assert.equal(st.map.get(M.META_BACKUP_KEY), futureRaw);
 });
 
 t('newGameOptions: 잠긴 출신·안 산 보너스 무시, 최대 3개, 합산', () => {
@@ -253,6 +316,36 @@ t('newGameOptions: 잠긴 출신·안 산 보너스 무시, 최대 3개, 합산'
   assert.equal(M.newGameOptions(m, { guardian: 'no_such' }).guardian, 'knight');
   const o3 = M.newGameOptions(m, { bonusIds: ['star_hairpin', 'cube_cake'] });
   assert.equal(o3.bonuses.items.silver_hairpin, 1); assert.equal(o3.bonuses.relations.cube, 20);
+});
+
+t('기록: 해마다의 결정·실제 에필로그 · 함수형 에필로그도 앨범에 보인다', () => {
+  const f = fin('guardian_successor', { name: '하린', guardian: 'merchant', hidden: true });
+  f.annualLog = [{ age: 11, id: 'school', label: '학교에 보낸다' }, { age: 12, label: '' }, { age: 30, label: '범위 밖' }, { age: 13, label: 'x'.repeat(80) }];
+  f.ending.epilogue = '항구에 배가 떴다. 선주는 하린.';
+  const r = M.recordRun(M.emptyMeta(), f, day(1));
+  assert.deepEqual(r.run.choices.map(c => c.age), [11, 13]); assert.equal(r.run.choices[1].label.length, 40);
+  const al = M.endingAlbum(r.meta);
+  const gs = al.find(e => e.id === 'guardian_successor');
+  assert.equal(gs.epilogue, '항구에 배가 떴다. 선주는 하린.', '기록된 실제 에필로그');
+  assert.deepEqual(gs.best.choices.map(c => c.label), ['학교에 보낸다', 'x'.repeat(40)]);
+  // 기록에 에필로그가 없어도(구버전) 함수형 에필로그를 이름·출신으로 만들어 본다
+  for (const id of ['guardian_successor', 'legacy_sisters']) {
+    const m2 = M.recordRun(M.emptyMeta(), fin(id, { name: '하린', guardian: 'merchant', hidden: true }), day(2)).meta;
+    const e = M.endingAlbum(m2).find(x => x.id === id);
+    assert.ok(typeof e.epilogue === 'string' && e.epilogue.includes('하린'), id);
+    assert.ok(!/\{(name|call)/.test(e.epilogue), `${id} 토큰이 남지 않는다`);
+  }
+  // 문자열 에필로그는 지금의 데이터 문장으로 (기록보다 우선)
+  const q = fin('queen', { name: '하린' }); q.ending.epilogue = '옛 문장';
+  const qa = M.endingAlbum(M.recordRun(M.emptyMeta(), q, day(3)).meta).find(e => e.id === 'queen');
+  assert.notEqual(qa.epilogue, '옛 문장'); assert.ok(qa.epilogue.includes('하린'));
+  // 이 엔딩이 반기는 성격
+  const fav = M.endingFavor(ENDINGS.find(e => e.id === 'queen'));
+  assert.ok(fav.length >= 1 && fav.length <= 2 && fav.every(x => x.pole && (x.sign === 1 || x.sign === -1)));
+  assert.deepEqual(M.endingFavor(null), []); assert.deepEqual(M.endingFavor({ pers: { bogus: 1, extro: 0.1 } }), []);
+  // 저장 왕복에도 그대로
+  const st = memStorage(); M.saveMeta(st, r.meta);
+  assert.deepEqual(M.loadMeta(st), r.meta);
 });
 
 t('엔딩 앨범: 달성 기록·최고 회차·히든 ??? 숨김', () => {
@@ -292,6 +385,28 @@ t('성격 지도 SVG: 5축·한국어 양극·빈/불완전 기록', () => {
   assert.ok(!one.includes('NaN') && one.includes('+100'));
   assert.ok(personalityTableHTML([PERS(10), PERS(11)]).includes('<table'));
   assert.ok(!renderPersonalityMap([PERS(10), PERS(18, 40)], { width: 300 }).includes('NaN'));
+  assert.ok(!renderPersonalityMap([PERS(10), PERS(18, 40)], { width: 'abc' }).includes('NaN'), '잘못된 폭');
+  // 좁은 폭에서도 끝값 라벨('+100 야망')이 그림 밖으로 잘리지 않는다
+  for (const width of [240, 280, 319, 320, 340, 419, 560]) {
+    const svg2 = renderPersonalityMap([PERS(10), { age: 18, extro: 100, agree: -100, ambit: 100, roman: -100, good: 100 }], { width });
+    const W = Number(svg2.match(/viewBox="0 0 (\d+)/)[1]);
+    assert.equal(W, width, '요청한 폭 그대로 그린다(축소되면 글자도 작아진다)');
+    const compact = W < 320;
+    assert.equal(svg2.includes('pm-end-pole'), !compact, '휴대폰 폭은 끝값에서 극 이름을 뺀다');
+    const need = compact ? 30 : 58;   // '+100' ≈ 28px, '+100 야망' ≈ 56px (11.5px)
+    for (const [, ex] of svg2.matchAll(/class="pm-end" x="([\d.]+)"/g)) assert.ok(Number(ex) + need <= W, `${width}: 끝값 라벨 x=${ex}, W=${W}`);
+  }
+  assert.ok(renderPersonalityMap([PERS(10)], { width: 100 }).includes('viewBox="0 0 240 '), '최소 240');
+  // 해마다의 결정 줄 + 이 길이 반기는 성격
+  const choices = [{ age: 11, label: '학교에 보낸다' }, { age: 14, label: '<b>검</b>을 쥐여 준다' }, { age: 40, label: '범위 밖' }];
+  const svg3 = renderPersonalityMap([10, 11, 12, 13, 14, 15].map(a => PERS(a, a)), { choices, favor: [{ id: 'ambit', sign: 1, pole: '야망' }, { id: 'nope', sign: 1 }] });
+  assert.equal((svg3.match(/class="pm-choice"/g) || []).length, 2);
+  assert.ok(svg3.includes('data-choice="&lt;b&gt;검&lt;/b&gt;을 쥐여 준다"'), '결정 문구는 이스케이프');
+  assert.ok(!svg3.includes('<b>검'));
+  assert.equal((svg3.match(/pm-pole-fav/g) || []).length, 1); assert.ok(svg3.includes('★ 야망'));
+  assert.ok(!renderPersonalityMap([PERS(10)], {}).includes('pm-choice'), '결정이 없으면 줄도 없다');
+  const tbl = personalityTableHTML([PERS(10), PERS(11)], choices);
+  assert.ok(tbl.includes('해마다의 결정') && tbl.includes('11세</b> 학교에 보낸다') && tbl.includes('&lt;b&gt;'));
 });
 
 t('앨범 HTML: 사용자 입력 이스케이프', () => {
@@ -306,6 +421,24 @@ t('앨범 HTML: 사용자 입력 이스케이프', () => {
   assert.ok(html.includes('&lt;img src=x onerror=alert(1)&gt;'));
   assert.ok(lettersHTML([], null).includes('아직 도착한 편지가 없다'));
   assert.ok(runsHTML([]).includes('아직 떠나보낸 아이가 없다'));
+  // 손상된 범주 이름이 style 속성에 새지 않는다
+  const odd = albumGridHTML([{ id: 'x', cat: 'constructor', achieved: false, hidden: false, secret: false, name: 'x', hint: 'h', letters: [] }]);
+  assert.ok(!odd.includes('function') && odd.includes('--cat:#a79fc4'));
+});
+
+t('앨범 HTML: 보호자 조사·편지 안내 문구·반기는 성격', () => {
+  let m = M.emptyMeta();
+  m = M.recordRun(m, fin('queen', { name: '하린', guardian: 'merchant' }), day(1), LET).meta;
+  m = M.recordRun(m, fin('painter', { name: '루나', guardian: 'knight' }), day(2), LET).meta;
+  const runs = runsHTML(m.runs);
+  assert.ok(runs.includes('은퇴한 상인과 함께') && runs.includes('전직 왕실 기사와 함께'), '와/과');
+  assert.ok(!runs.includes('상인와'));
+  const al = M.endingAlbum(m, ENDINGS, LET);
+  assert.ok(detailHTML(al.find(e => e.id === 'queen')).includes('은퇴한 상인과 함께'));
+  assert.ok(detailHTML(al.find(e => e.id === 'painter')).includes('남은 편지는 다음 아이와의 8년이 끝날 때마다'), '남은 편지 안내');
+  assert.ok(!detailHTML(al.find(e => e.id === 'queen')).includes('그해의 결정'), '결정 기록이 없으면 범례도 없다');
+  assert.ok(detailHTML(al.find(e => e.id === 'queen')).includes('이 길이 반기는 성격'), '반기는 성격 범례');
+  assert.ok(shopHTML(M.startOptions(m), null).includes('처음 보는 엔딩이면 +2'));
 });
 
 t('엔진 연동: newGameOptions → newGame → 8년 → recordRun', async () => {

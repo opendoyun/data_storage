@@ -9,7 +9,7 @@ export const STYLE_ANCHOR = [
   '- Clean-line 2D anime illustration: crisp thin lineart, cel shading with soft gradient shadows, gentle luminous lighting, polished game-art finish. 깨끗한 선의 애니메이션 셀 채색, 부드러운 그라데이션 그림자.',
   '- World: medieval-fantasy kingdom "Celestia" (셀레스티아) under THREE moons (세 개의 달). Royal capital (palace, nobles), harbor city (trade, inns), rural plains (fields, herb witch, a small family house).',
   '- Palette: black-and-white costume base, ivory skin, silver-white hair, warm gold accents (#e7c36a), deep indigo night sky (#1d1631). Gold four-point star sparkles (금색 4각 별 반짝임) are the visual motif of the "star child".',
-  '- Mood: warm, wholesome, gentle; for a 12+ rated family life-sim game. Everyone is dressed modestly.',
+  '- Mood: warm, wholesome, gentle; for a 12+ rated family life-sim game. Everyone is dressed modestly and drawn in a non-sexualised way; natural poses, eye-level camera.',
   '- Absolutely no text of any kind in the image: no letters, captions, signs with writing, labels, logos, watermarks or signatures.',
 ].join('\n');
 
@@ -20,7 +20,8 @@ export const LUNA_BIBLE = [
   '- Eyes: crimson red eyes, large irises with bright highlights; calm, slightly sleepy/drowsy gaze; faint blush on the cheeks. 붉은(크림슨) 눈, 차분하고 살짝 나른한 눈매.',
   '- Skin: fair ivory. Small silver star-shaped hairpin (별 모양 은 머리핀).',
   '- Signature: a few small GOLD four-point star sparkles floating around her (more when her magic is strong).',
-  '- Costume rule: black-and-white base outfit + exactly ONE accent colour + gold sparkles. Modest, age-appropriate, covered shoulders and knees.',
+  '- Costume rule: black-and-white base outfit + exactly ONE accent colour + gold sparkles.',
+  '- Modesty rule (every age, 10 to 28): wholesome and age-appropriate. High or modest neckline, sleeves that cover the shoulders, skirt or trousers well below the knee (ankle-length preferred), nothing tight, sheer or cut out. Relaxed natural pose, eye-level camera. 나이에 맞는 체형, 단정한 옷차림.',
 ].join('\n');
 
 // 성장 단계(초상 char/{stage}_{cat}) — 나이별 체형 원칙. 모든 단계에서 나이에 맞는 체형·단정한 옷.
@@ -132,7 +133,8 @@ export const ENDING_CAT_STYLE = {
 };
 
 // 핵심 엔딩 장면 연출 (id별). 없는 id(확장 엔딩)는 에필로그 + 범주 기본값으로 만든다.
-// npcs: 장면에 실제로 그릴 NPC (지정하면 에필로그 자동 감지를 덮어쓴다)
+// npcs: 장면에 실제로 그릴 NPC (지정하면 에필로그 자동 감지를 덮어쓴다) · npcNotes: 이 장면에서만 쓰는 NPC 모습(NPC_IN_ENDING 대신)
+// summary: 함수형 에필로그(출신·이전 회차마다 달라짐)의 영어 요약. 함수 소스가 프롬프트로 새지 않게 이것을 쓴다.
 export const ENDING_SCENES = {
   queen: { scene: 'Queen Luna on the palace balcony at dusk, a small simple crown, modest black-and-white royal gown with gold trim and a long cape; below her the capital glows with lanterns under three bright moons', npcs: [] },
   duchess: { scene: 'Winter evening: Luna as a duchess in an elegant black coat with gold trim steps out of a noble carriage in front of the small snow-covered house on the plains, warm light in the window, she smiles like coming home', npcs: [] },
@@ -160,18 +162,44 @@ export const ENDING_SCENES = {
   assassin: { scene: 'Night rooftops of the harbor city under three moons: Luna in a dark hooded cloak with crimson lining, half of her face in shadow, no weapon visible; far below, the mailbox of the small plains house glints with a gold coin', npcs: [] },
   bandit_boss: { scene: 'A mountain pass: Luna as the leader of an outlaw band in rugged black leather with a crimson scarf, on horseback, waving a poor farmer\'s cart through untouched; her band in the background; no violence', npcs: [] },
   swindler: { scene: 'An elegant salon: Luna as a charming swindler in a black-and-white suit with gold accents, holding a playing card and a masquerade mask, a sly smile', npcs: [] },
-  royal_wedding: { scene: 'Countryside: Luna and Prince Leon as a married adult couple in simple clothes laughing together in front of a country cottage, a royal carriage giving up and turning back in the distance; warm, wholesome', npcs: ['leon'] },
+  royal_wedding: { scene: 'Countryside: Luna and Prince Leon as a married adult couple in simple modest clothes laughing together hand in hand in front of a country cottage, a royal carriage giving up and turning back in the distance; warm and wholesome, affectionate but chaste (holding hands at most)', npcs: ['leon'] },
   family_home: { scene: 'Morning in the small plains house, now with one more room: Luna opens the curtains to the sunrise, Cube floats beside her holding a cake, the guardian seen from behind at the breakfast table', npcs: ['cube'] },
   drifter: { scene: 'A faraway hilltop road: Luna as a lone traveller, cloak fluttering, looks back toward the distant plains with a letter in her hand, bittersweet golden hour', npcs: [] },
   star_goddess: { scene: 'Night with three moons aligned: Luna descends from a starry sky in a white-and-black gown wrapped in gold starlight and countless gold four-point sparkles, a fourth moon shining right above the small plains house', npcs: [] },
   world_traveler: { scene: 'Luna as a world traveller with a backpack and a map at a viewpoint over a foreign harbor city at sunrise; in the foreground, a wall map full of pins and a stack of letters (no readable writing)', npcs: [] },
   time_reverse: { scene: 'Luna as an archmage seals a glowing clock-like magic circle into a small silver key and places the key in the guardian\'s hands (only hands visible), indigo and gold star-light', npcs: [] },
+  // ── 확장 엔딩 (endings_ext.js) ──
+  ship_captain: { scene: 'The deck of a merchant sailing ship on a bright windy sea (no readable name on the hull): Luna as the ship\'s captain in a long black captain\'s coat with crimson trim stands at the wheel, hair streaming in the wind, tying a sailor\'s knot; the home harbor and the far plains on the horizon', npcs: [] },
+  knight_errant: { scene: 'A country road at dawn: Luna as a wandering knight in plain steel-and-black armour with a crimson cloak, sword sheathed, carrying a round shield painted with a simple emblem of one small roof under three moons (no writing), helping an old villager carry a heavy basket', npcs: [] },
+  prima_dancer: { scene: 'A grand theater stage: Luna as the prima dancer in a modest long-sleeved high-neck black-and-white gown with an ankle-length flowing skirt, mid graceful turn, gold star sparkles streaming from her fingertips over the audience; the audience are soft silhouettes and one seat at the very back is empty', npcs: [] },
+  tailor_master: { scene: 'A tailor\'s boutique on an avenue of the capital: Luna as a master dressmaker in a black-and-white work dress with a measuring tape around her neck sews a tiny gold star into the lining of a black coat; mannequins wear elegant modest black-and-white garments; the shop sign shows only a needle and a star emblem (no writing)', npcs: [] },
+  master_smith: { scene: 'A blacksmith\'s forge: Luna as a master smith in a heavy leather apron over a long-sleeved black work shirt, hair tied back, lifts a softly glowing star-metal blade with tongs; simple farm sickles hang on the wall, young apprentices watch from the background, warm sparks', npcs: [] },
+  village_teacher: { scene: 'A sunny village schoolroom: Luna as a gentle teacher with sleepy crimson eyes, in a modest black-and-white dress with a green shawl, holds a worn old chalk box while small children at wooden desks raise their hands; the chalkboard shows only star doodles (no writing)', npcs: [] },
+  astronomer: { scene: 'The top of a lighthouse at night turned into an observatory: Luna as an astronomer beside a brass telescope with star charts (no writing) spread out, three moons in the sky and a faint fourth light near the horizon; indigo-violet accents', npcs: [] },
+  orphanage_head: { scene: 'The doorway of an orphanage called "House of Lanterns" (the sign shows only a lantern emblem) at night: Luna as its head kneels to tuck a blanket around a newly arrived small child in warm lantern light; a kind young man (the house\'s first teacher, about 19) smiles in the background', npcs: [] },
+  royal_spy: { scene: 'A lantern-lit night market in the harbor city: Luna as a royal spy disguised as a roasted-chestnut seller in a hooded dark coat with a few small half-moon buttons on the collar, glancing sideways with a knowing smile, light mist; no weapons', npcs: [] },
+  medium: { scene: 'Dusk at Luna\'s doorway, where a blue lantern hangs: Luna as a medium in black-and-white with a gentle smile welcomes a translucent, peaceful, smiling ghost of a little girl in an old-fashioned modest dress (not scary at all) together with a living traveller; soft blue and gold light, a basket of fresh bread', npcs: [] },
+  rival_partner: { scene: 'The headmistresses\' office of a school in the capital: Luna and Theodora, both adults, sit at two identical desks pushed side by side, playfully competing over a board game while students peek in through the door; Luna in black-and-white with a green accent, Theodora in crimson; friendly rivalry', npcs: ['theodora'] },
+  mother_reunion: { scene: 'A snowy northern village at night: adult Luna and her birth mother Serafine, a gentle woman in her late forties with long silver hair and a warm winter cloak, light the street lanterns house by house together, singing softly; warm lantern glow on the snow, gold sparkles drifting', npcs: [] },
+  dragon_friend: { scene: 'A mountaintop under a starry sky with three moons: adult Luna sits on the grass watching the stars beside a huge, friendly silver-scaled dragon with red eyes that gently rests the tip of its tail by her side; the small plains house far below with a lit window', npcs: [] },
+  cube_true_form: { scene: 'The plains under three moons at night: adult Luna holds in her cupped hands a palm-sized glowing gold star wearing a tiny black bow tie (the true form of Cube, the butler fairy), both smiling; a small birthday cake on a blanket beside her, gold sparkles everywhere', npcs: ['cube'],
+    npcNotes: { cube: 'Cube in its true form: a palm-sized glowing gold star wearing the same tiny black bow tie as in the attached portrait (its white cube body is gone)' } },
+  guardian_successor: {
+    summary: 'Ten years later Luna has taken up the guardian\'s old calling (it differs by playthrough: royal knight, scholar, merchant, priest or adventurer) and has cleared the guardian\'s lost good name.',
+    scene: 'Golden hour on a hill overlooking the kingdom: adult Luna in a simple black-and-white coat with gold trim stands beside the guardian (seen only from behind), proudly wearing a small old emblem without writing that once belonged to the guardian; a sense of passing the torch, warm and tender', npcs: [] },
+  legacy_sisters: {
+    summary: 'Ten years later, on nights when the three moons overlap, extra chairs are set at the table of the small plains house: Luna\'s "sisters" (star children from other lives, who share her silver hair and crimson eyes) visit, and leave before sunrise.',
+    scene: 'Night with three overlapping moons, the warm dining table of the small plains house: adult Luna sits with three or four young women who look like her sisters (the same silver-white hair and crimson eyes, each in a different modest travel outfit: a navy cape, a worn sword on the back, a lute case, a white pilgrim robe, a wool scarf), cups of tea, laughter; the guardian seen from behind at the head of the table', npcs: [] },
 };
 
 // ── 금지 목록 (negative) ─────────────────────────────────────────────────────
 export const NEG_BASE = 'text, letters, words, numbers, captions, speech bubbles, labels, signs with writing, watermark, signature, logo, UI elements, frame, border, low quality, blurry, jpeg artifacts, extra fingers, malformed hands, extra limbs, distorted face, photorealistic, 3D render';
-export const NEG_MODEST = 'revealing clothing, cleavage, low neckline, bare shoulders, bare midriff, sleeveless top, short skirt, skirt slit, swimsuit, tight bodysuit, suggestive or seductive pose, body-emphasizing pose or angle';
-export const NEG_MINOR = 'adult body proportions, curvy or mature figure, mature face, heavy makeup, lipstick';
+// 안전 필터 오작동을 피하려고 노골적인 단어 대신 "피할 옷차림·구도"로만 적는다.
+export const NEG_MODEST = 'revealing or skimpy clothing, low or plunging neckline, off-shoulder or bare shoulders, bare midriff, sleeveless top, short skirt, shorts, bare thighs, skirt slit, see-through or sheer fabric, cut-outs, swimwear, tight or body-hugging clothing, provocative or flirtatious pose, pose or camera angle that emphasizes the body, low camera angle looking up';
+// 미성년 단계(10~14세)와 16·18세를 나눈다: 18세 그림에 "성인 비율 금지"를 넣으면 지시가 서로 부딪힌다.
+export const NEG_MINOR = 'adult body proportions, older-looking face, curvy or developed figure, emphasized chest or hips, heavy makeup, lipstick, high heels';
+export const NEG_TEEN_OLDER = 'curvy or voluptuous figure, emphasized chest or hips, heavy makeup, lipstick, high heels, looking older than 18';
+export const negForAge = (age) => (age != null && age >= 16 ? NEG_TEEN_OLDER : NEG_MINOR);
 export const NEG_LUNA = 'Luna drawn off-model: Luna with blonde, black or brown hair, Luna with short, wavy or curly hair or twin tails, Luna with blue, purple or green eyes';
 export const NEG_DUPLICATE = 'duplicate characters, two copies of the same girl';
 export const NEG_VIOLENCE = 'blood, gore, wounds, weapons pointed at the viewer, fighting';

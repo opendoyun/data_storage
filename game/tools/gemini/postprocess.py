@@ -19,7 +19,9 @@ from PIL import Image, ImageOps
 def _open(path):
     im = Image.open(path)
     im.load()
-    im = ImageOps.exif_transpose(im)
+    fmt = im.format
+    im = ImageOps.exif_transpose(im)  # returns a copy without .format
+    im.format = fmt
     return im
 
 
@@ -43,9 +45,9 @@ def fit(src, out, w, h):
     im = im.convert('RGBA' if has_alpha else 'RGB')
     target = w / h
     if sw / sh > target:          # too wide -> crop left/right
-        cw, ch = round(sh * target), sh
+        cw, ch = max(1, min(sw, round(sh * target))), sh
     else:                          # too tall -> crop top/bottom
-        cw, ch = sw, round(sw / target)
+        cw, ch = sw, max(1, min(sh, round(sw / target)))
     left, top = (sw - cw) // 2, (sh - ch) // 2
     im = im.crop((left, top, left + cw, top + ch))
     if im.size != (w, h):

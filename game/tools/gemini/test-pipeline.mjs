@@ -5,13 +5,14 @@
 //   node tools/gemini/test-pipeline.mjs          # 통과하면 exit 0
 //   node tools/gemini/test-pipeline.mjs --keep   # 임시 폴더를 지우지 않고 경로 출력 (디버깅)
 import { spawn, spawnSync } from 'node:child_process';
-import { mkdtempSync, rmSync, existsSync, readFileSync, writeFileSync, mkdirSync, statSync, copyFileSync } from 'node:fs';
-import { join, dirname } from 'node:path';
+import { mkdtempSync, rmSync, existsSync, readFileSync, writeFileSync, mkdirSync, statSync, copyFileSync, readdirSync } from 'node:fs';
+import { join, dirname, relative } from 'node:path';
 import { tmpdir } from 'node:os';
 import * as L from './lib.mjs';
 import { makePng, TINY_JPEG_16x9 } from './mock-server.mjs';
 import { endingEntry } from './build-manifest.mjs';
-import { BG, NPC, UI, CHAR_KEYS } from '../../js/data/images.js';
+import { extractImage } from './generate.mjs';
+import { BG, NPC, UI, CHAR_KEYS, SIZES } from '../../js/data/images.js';
 import { ENDINGS } from '../../js/data/endings.js';
 
 const args = L.parseArgs();
@@ -23,17 +24,30 @@ const section = (t) => console.log(`\n[${t}]`);
 
 const baseEnv = { ...process.env, GEMINI_BACKOFF_MS: '20', GEMINI_NO_REEXEC: '1', NODE_NO_WARNINGS: '1' };
 for (const k of ['GEMINI_API_KEY', 'GOOGLE_API_KEY', 'GEMINI_IMAGE_MODEL', 'GEMINI_API_BASE', 'GEMINI_RPM', 'NODE_USE_ENV_PROXY']) delete baseEnv[k];
+const allOutputs = []; // 모든 실행의 출력 (키 유출 검사용)
 function run(script, argv, env = {}) {
   const r = spawnSync(NODE, [tool(script), ...argv], { env: { ...baseEnv, ...env }, encoding: 'utf8', timeout: 180000 });
-  return { code: r.status, out: (r.stdout || '') + (r.stderr || '') };
+  const out = (r.stdout || '') + (r.stderr || '');
+  allOutputs.push(out);
+  return { code: r.status, out };
 }
 const sizeOk = (file, e) => { if (!existsSync(file)) return false; const s = L.imageSize(file); return s && s.format === 'PNG' && s.width === e.width && s.height === e.height; };
 const readLog = (f) => existsSync(f) ? JSON.parse(readFileSync(f, 'utf8')) : [];
 
-// game/assets 에서 이 시험이 실수로 건드릴 수 있는 파일들의 상태 스냅숏
-function assetSnapshot(keys) {
-  const files = ['generation-log.json', 'gemini-prompts.md', 'manifest.json', ...keys.map(k => `${k}.png`)];
-  return Object.fromEntries(files.map(f => { const p = join(L.ASSETS_DIR, f); return [f, existsSync(p) ? `${statSync(p).size}:${statSync(p).mtimeMs}` : 'absent']; }));
+// game/assets 폴더 전체(하위 폴더 포함)의 상태 스냅숏: 파일 목록 + 크기 + 수정 시각. 시험 전후가 같아야 한다.
+function assetSnapshot() {
+  const out = {};
+  const walk = (d) => { if (!existsSync(d)) return; for (const f of readdirSync(d, { withFileTypes: true })) { const p = join(d, f.name); if (f.isDirectory()) walk(p); else { const st = statSync(p); out[relative(L.ASSETS_DIR, p)] = `${st.size}:${st.mtimeMs}`; } } };
+  walk(L.ASSETS_DIR);
+  return out;
+}
+// 출력·로그·폴더 안의 모든 텍스트에서 비밀 문자열 찾기 (키 유출 검사)
+function leaks(secret, ...texts) { return texts.some(t => t && t.includes(secret)); }
+function filesContaining(dir, secret) {
+  const hits = [];
+  const walk = (d) => { if (!existsSync(d)) return; for (const f of readdirSync(d, { withFileTypes: true })) { const p = join(d, f.name); if (f.isDirectory()) walk(p); else if (readFileSync(p).includes(secret)) hits.push(p); } };
+  walk(dir);
+  return hits;
 }
 
 async function startMock(flags) {
@@ -50,7 +64,7 @@ async function startMock(flags) {
 async function main() {
   const tmp = mkdtempSync(join(tmpdir(), 'starborn-gemini-test-'));
   const mocks = [];
-  let snapBefore = null;
+  const snapBefore = assetSnapshot(); // 맨 처음에 찍는다: 이후 모든 단계가 game/assets 를 건드리지 않아야 한다
   try {
     // ── 1. 매니페스트 ─────────────────────────────────────────────
     section('build-manifest');
@@ -75,13 +89,31 @@ async function main() {
     ok('참조는 항상 앞 번호', manifest.entries.every(e => e.refs.every(rk => byKey.get(rk)?.order < e.order)));
     const ext = endingEntry({ id: 'zz_rival', name: '평생의 라이벌', cat: '관계', epilogue: '{name과} 테오도라는 매년 무도회에서 겨룬다. 승부는 아직이다.' });
     ok('확장 엔딩: 에필로그의 NPC 이름 자동 감지 → npc 참조', ext.refs.includes('npc/theodora') && ext.prompt.includes('루나와 테오도라는'), JSON.stringify(ext.refs));
+    const fnEnd = endingEntry({ id: 'zz_fn', name: '함수형', cat: '히든', hidden: true, epilogue: (st) => `{name은} ${st.legacy?.length ?? 0}명의 언니와 별을 본다.` });
+    ok('함수형 에필로그: 소스 코드가 아니라 예시 문장이 들어감', !/=>|\$\{/.test(fnEnd.prompt) && fnEnd.prompt.includes('루나는 0명의 언니와') && fnEnd.ending.epilogueVaries === true, fnEnd.prompt.split('\n').find(l => l.startsWith('Epilogue')));
+    ok('함수형 에필로그가 있는 실제 엔딩도 코드 조각 없음 (guardian_successor·legacy_sisters 등)', manifest.entries.every(e => !/=>|\bfunction\s*\w*\s*\(|\$\{/.test(e.prompt)), manifest.entries.filter(e => /=>|\$\{/.test(e.prompt)).map(e => e.key).join(', '));
+    ok('치환 안 된 {name}/{call} 토큰 없음', manifest.entries.every(e => !/\{(name|call)/.test(e.prompt)));
+    ok('엔딩 제목 표기에 "히든, 히든" 중복 없음', manifest.entries.every(e => !e.prompt.includes('히든, 히든')));
+    ok('모든 항목 크기 = images.js SIZES (ref 1600×900)', manifest.entries.every(e => { const w = e.group === 'ref' ? [1600, 900] : SIZES[e.group]; return w && e.width === w[0] && e.height === w[1]; }),
+      manifest.entries.filter(e => e.group !== 'ref' && (e.width !== SIZES[e.group]?.[0] || e.height !== SIZES[e.group]?.[1])).map(e => e.key).join(', '));
+    ok(`엔딩 ${ENDINGS.length}종 전부(확장 포함) 매니페스트에 있음`, ENDINGS.every(e => keys.has(`ending/${e.id}`)) && manifest.entries.filter(e => e.group === 'ending').length === ENDINGS.length);
+    ok('모든 항목에 단정함 금지 목록, 공주 그림엔 나이 원칙', manifest.entries.every(e => /revealing/.test(e.negative)) &&
+      manifest.entries.filter(e => e.group === 'char' && e.age <= 14).every(e => /adult body proportions/.test(e.negative)) &&
+      manifest.entries.filter(e => e.prompt.includes('[CHARACTER — 루나')).every(e => /Modesty rule/.test(e.prompt)));
+    ok('특정 작가·스튜디오 화풍 지명 없음', manifest.entries.every(e => !/in the style of|ghibli|makoto|shinkai|kyoto animation|mucha|artstation|pixiv|trending on/i.test(e.prompt) && !/\b(style of|by|artist) [A-Z][a-z]+ [A-Z][a-z]+/.test(e.prompt)));
+    r = spawnSync(NODE, [tool('build-manifest.mjs'), '--stdout'], { env: baseEnv, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 });
+    let parsed = null; try { parsed = JSON.parse(r.stdout); } catch { /* 잘림 */ }
+    ok('--stdout 출력이 파이프에서 잘리지 않음 (완전한 JSON)', r.status === 0 && parsed?.entries?.length === manifest.entries.length, `${r.stdout.length} chars`);
+    // 저장소의 manifest.json / gemini-prompts.md 가 지금 게임 데이터와 맞는지 (읽기만 함). 다르면 새 엔딩·배경이 그릴 목록에서 빠진다.
     r = run('build-manifest.mjs', ['--check']);
-    if (r.code !== 0) console.log('  (참고) game/assets/manifest.json 이 최신이 아님 → node tools/gemini/build-manifest.mjs 실행 필요');
+    ok('game/assets/manifest.json 이 최신 (아니면: node tools/gemini/build-manifest.mjs && node tools/gemini/chrome-batch.mjs)', r.code === 0, r.out);
+    const mdNow = join(tmp, 'prompts-now.md');
+    run('chrome-batch.mjs', [`--out=${mdNow}`]);
+    ok('game/assets/gemini-prompts.md 가 manifest.json 과 일치 (아니면: node tools/gemini/chrome-batch.mjs)', existsSync(L.PROMPTS_MD_PATH) && existsSync(mdNow) && readFileSync(mdNow, 'utf8') === readFileSync(L.PROMPTS_MD_PATH, 'utf8'));
 
     const endingWithNpc = manifest.entries.find(e => e.group === 'ending' && e.refs.length >= 2);
     const npcRef = endingWithNpc.refs.find(k => k.startsWith('npc/'));
     const mainKeys = ['ref/luna_sheet', 'char/child_body', 'char/adult_social', npcRef, 'bg/room_spring', 'bg/room_winter', endingWithNpc.key, 'ui/title_key'];
-    snapBefore = assetSnapshot([...mainKeys, 'char/child_mind', 'bg/road', 'ending/queen', 'npc/cube']);
 
     // ── 2. 키 없음 / dry-run ─────────────────────────────────────
     section('키 없음 · dry-run');
@@ -96,9 +128,10 @@ async function main() {
 
     // ── 3. 목업으로 실제 생성 ───────────────────────────────────
     section('목업 API로 생성 (TEXT,IMAGE 폴백 · 429/503 재시도 · 참조 첨부)');
-    const mock = await startMock(['--reject-image-only', '--flaky=4', '--require-key=mock-key']);
+    const SECRET = 'mock-key-7f3a9cSECRET';
+    const mock = await startMock(['--reject-image-only', '--flaky=4', `--require-key=${SECRET}`]);
     mocks.push(mock);
-    const env = { GEMINI_API_KEY: 'mock-key', GEMINI_API_BASE: mock.base };
+    const env = { GEMINI_API_KEY: SECRET, GEMINI_API_BASE: mock.base };
     r = run('generate.mjs', [`--manifest=${mPath}`, `--out=${o1}`, `--keys=${mainKeys.join(',')}`, '--concurrency=2', '--rpm=0', '--no-pause'], env);
     ok('생성 exit 0', r.code === 0, r.out);
     ok('모델 자동 선택 = gemini-3-pro-image-preview (페이지 넘김 포함)', /모델 자동 선택: gemini-3-pro-image-preview/.test(r.out), r.out.slice(0, 400));
@@ -106,6 +139,8 @@ async function main() {
     let reqs = await mock.requests();
     const firstOf = (k) => reqs.find(q => q.key === k);
     const okOf = (k) => reqs.filter(q => q.key === k && q.status === 200);
+    ok('요청 본문이 실제 API 형식 검사 통과 (contents/parts/inlineData{mimeType,data}/generationConfig.imageConfig.aspectRatio)', reqs.length > 0 && reqs.every(q => !q.invalid), JSON.stringify(reqs.filter(q => q.invalid)));
+    ok('키는 x-goog-api-key 헤더로만 전송 (URL 쿼리 아님)', reqs.every(q => q.keyVia === 'header'));
     ok('IMAGE 단독 400 → TEXT,IMAGE 로 폴백', reqs.some(q => q.status === 400 && q.modalities.join() === 'IMAGE') && reqs.some(q => q.status === 200 && q.modalities.join() === 'TEXT,IMAGE'));
     ok('429·503 재시도 후 성공', reqs.some(q => q.status === 429) && reqs.some(q => q.status === 503));
     ok('캐릭터 시트 요청: 첨부 0장, 16:9', okOf('ref/luna_sheet')[0]?.inline === 0 && okOf('ref/luna_sheet')[0]?.aspect === '16:9');
@@ -155,7 +190,8 @@ async function main() {
 
     const fPath = join(tmp, 'manifest-fail.json');
     const bad = (key, marker) => ({ ...byKey.get('bg/road'), key, path: `assets/${key}.png`, prompt: `${byKey.get('bg/road').prompt}\n${marker}`, refs: [], order: 900 });
-    writeFileSync(fPath, JSON.stringify({ ...manifest, entries: [...manifest.entries, bad('test/no_image', '[[mock:no-image]]'), bad('test/err500', '[[mock:500]]')] }));
+    writeFileSync(fPath, JSON.stringify({ ...manifest, entries: [...manifest.entries, bad('test/no_image', '[[mock:no-image]]'), bad('test/err500', '[[mock:500]]'),
+      bad('test/blocked', '[[mock:blocked]]'), bad('test/thought', '[[mock:thought]]'), bad('test/quota0', '[[mock:quota0]]'), bad('test/after_quota', '')] }));
     const o3 = join(tmp, 'out3');
     n0 = (await mock.requests()).length;
     r = run('generate.mjs', [`--manifest=${fPath}`, `--out=${o3}`, '--keys=test/no_image,test/err500', '--retries=2', '--rpm=0', '--concurrency=1'], env);
@@ -165,6 +201,30 @@ async function main() {
     ok('500은 재시도 2회 후 포기 (3회 요청)', reqs.filter(q => q.key === 'bg/road' && q.status === 500).length === 3, JSON.stringify(reqs.map(q => q.status)));
     log = readLog(join(o3, 'generation-log.json'));
     ok('로그에 error 기록 (이미지 없음 사유 포함)', log.some(x => x.key === 'test/no_image' && x.status === 'error' && /IMAGE_SAFETY/.test(x.error)) && log.some(x => x.key === 'test/err500' && x.status === 'error' && /500/.test(x.error)), JSON.stringify(log));
+
+    section('응답 파싱 · 차단 · 한도 0');
+    n0 = (await mock.requests()).length;
+    r = run('generate.mjs', [`--manifest=${fPath}`, `--out=${o3}`, '--keys=test/thought,test/blocked', '--rpm=0', '--concurrency=1'], env);
+    reqs = (await mock.requests()).slice(n0);
+    log = readLog(join(o3, 'generation-log.json'));
+    const th = log.find(x => x.key === 'test/thought' && x.status === 'ok');
+    ok('thought(중간) 이미지는 건너뛰고 최종 이미지 사용 (147×63 → 1280×560)', th?.src === '147x63' && !th.fromThought && sizeOk(L.targetPath(o3, 'test/thought'), byKey.get('bg/road')), JSON.stringify(th));
+    ok('promptFeedback.blockReason 은 재시도하지 않음 (요청 1회, 파일 없음)', reqs.filter(q => q.status === 'blocked').length === 1 && !existsSync(L.targetPath(o3, 'test/blocked')) && log.some(x => x.key === 'test/blocked' && /blockReason=SAFETY/.test(x.error)), JSON.stringify(reqs.map(q => q.status)));
+    n0 = (await mock.requests()).length;
+    r = run('generate.mjs', [`--manifest=${fPath}`, `--out=${o3}`, '--keys=test/quota0,test/after_quota', '--rpm=0', '--concurrency=1'], env);
+    reqs = (await mock.requests()).slice(n0);
+    ok('429 "limit: 0"(무료 등급 한도 0) → 재시도 없이 즉시 중단 exit 3, 결제 안내', r.code === 3 && reqs.length === 1 && /결제/.test(r.out) && !existsSync(L.targetPath(o3, 'test/after_quota')), r.out);
+    const fake = (parts, extra = {}) => ({ candidates: [{ content: { parts }, finishReason: 'STOP' }], ...extra });
+    const png = (w, h) => makePng(w, h).toString('base64');
+    const pick = extractImage(fake([{ text: 'hi' }, { inline_data: { mime_type: 'image/png', data: png(3, 2) } }]));
+    ok('extractImage: snake_case inline_data 도 읽음', !pick.none && L.imageSizeFromBuffer(pick.buf)?.width === 3);
+    const onlyThought = extractImage(fake([{ inlineData: { mimeType: 'image/png', data: png(5, 5) }, thought: true }, { inlineData: { mimeType: 'image/png', data: png(7, 7) }, thought: true }]));
+    ok('extractImage: thought 이미지뿐이면 마지막 것', L.imageSizeFromBuffer(onlyThought.buf)?.width === 7 && onlyThought.fromThought === true);
+    ok('extractImage: 이미지 없으면 사유(finishReason) 반환', /finishReason=IMAGE_SAFETY/.test(extractImage({ candidates: [{ content: { parts: [{ text: 'no' }] }, finishReason: 'IMAGE_SAFETY' }] }).why));
+
+    section('키 유출 검사');
+    ok(`표준출력·오류출력(실행 ${allOutputs.length}회)에 API 키가 찍히지 않음`, !leaks(SECRET, ...allOutputs));
+    ok('생성 로그·출력 폴더 어디에도 API 키가 없음', !filesContaining(tmp, SECRET).length, filesContaining(tmp, SECRET).join(', '));
 
     section('imageConfig 미지원 모델 → 비율 없이 요청 후 가운데 자르기');
     const mock2 = await startMock(['--reject-image-only', '--reject-aspect']);
@@ -216,9 +276,9 @@ async function main() {
   section('정리');
   ok('임시 출력 폴더 삭제', args.keep || !existsSync(tmp));
   if (snapBefore) {
-    const after = assetSnapshot(Object.keys(snapBefore).filter(f => f.endsWith('.png')).map(f => f.slice(0, -4)));
-    const changed = Object.keys(snapBefore).filter(f => snapBefore[f] !== after[f]);
-    ok('game/assets 는 그대로 (시험이 쓰지 않음)', !changed.length, changed.join(', '));
+    const after = assetSnapshot();
+    const changed = [...new Set([...Object.keys(snapBefore), ...Object.keys(after)])].filter(f => snapBefore[f] !== after[f]);
+    ok(`game/assets 전체(${Object.keys(after).length}개 파일) 그대로 — 시험이 쓰지 않음`, !changed.length, changed.join(', '));
   }
   const failed = results.filter(x => !x.pass);
   console.log(`\n${failed.length ? 'FAILED' : 'ALL PASSED'}: ${results.length - failed.length}/${results.length}`);

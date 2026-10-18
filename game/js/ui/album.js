@@ -14,11 +14,13 @@ export const CAT_COLORS = {
   '왕실/정치': '#9085e9', '무예': '#d95926', '학문/마법': '#3987e5', '예술/문화': '#d55181',
   '생활/상업': '#c98500', '신앙': '#199e70', '어둠': '#e66767', '관계': '#008300', '히든': '#e7c36a',
 };
-const catColor = (cat) => CAT_COLORS[cat] ?? '#a79fc4';
+const catColor = (cat) => (typeof cat === 'string' && Object.prototype.hasOwnProperty.call(CAT_COLORS, cat) ? CAT_COLORS[cat] : '#a79fc4');
 
 export const esc = (s) => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 export const fmtDate = (iso) => (typeof iso === 'string' && /^\d{4}-\d{2}-\d{2}/.test(iso) ? iso.slice(0, 10).replace(/-/g, '.') : '');
-const gName = (id) => GUARDIANS[id]?.name ?? '보호자';
+const gName = (id) => (typeof id === 'string' && Object.prototype.hasOwnProperty.call(GUARDIANS, id) ? GUARDIANS[id].name : '보호자');
+const withGuardian = (id) => `${josa(gName(id), '과')} 함께`;   // '은퇴한 상인과 함께' / '전직 왕실 기사와 함께'
+const nowrap = (html) => `<span class="alb-nw">${html}</span>`;
 const NATIVE = ['첫', '두', '세', '네', '다섯', '여섯', '일곱', '여덟', '아홉', '열'];
 export const ordinal = (n) => (n >= 1 && n <= 10 ? `${NATIVE[n - 1]} 번째` : `${n}번째`);
 const statName = (id) => STATS.find(s => s.id === id)?.name ?? id;
@@ -42,12 +44,30 @@ function normHistory(list) {
 }
 const signed = (v) => (v > 0 ? '+' : '') + v;
 const poleOf = (ax, v) => (v > 0 ? ax.pos : v < 0 ? ax.neg : '중간');
+// 해마다의 결정 [{ age, label }] (meta 기록 또는 engine annualLog) → 나이별 한 줄
+function normChoices(list) {
+  const byAge = new Map();
+  for (const c of Array.isArray(list) ? list : []) {
+    const age = Math.round(Number(c?.age)), label = typeof c?.label === 'string' ? c.label.trim().slice(0, 40) : '';
+    if (Number.isFinite(age) && age >= AGE0 && age <= AGE1 && label) byAge.set(age, label);
+  }
+  return byAge;
+}
+// 이 엔딩이 반기는 성격 [{ id, sign, pole }] → { axisId: sign }
+const favorMap = (list) => Object.fromEntries((Array.isArray(list) ? list : []).filter(f => f && PERSONALITY.some(ax => ax.id === f.id) && (f.sign === 1 || f.sign === -1)).map(f => [f.id, f.sign]));
+const DIAMOND = (cx, cy, r) => `M${cx.toFixed(1)} ${(cy - r).toFixed(1)}L${(cx + r).toFixed(1)} ${cy.toFixed(1)}L${cx.toFixed(1)} ${(cy + r).toFixed(1)}L${(cx - r).toFixed(1)} ${cy.toFixed(1)}Z`;
 
+// opts: { width, label, interactive, nativeTitles, choices: [{age,label}], favor: [{id,sign}] }
 export function renderPersonalityMap(persHistory, opts = {}) {
   const pts = normHistory(persHistory);
-  const W = Math.max(300, Math.round(opts.width ?? 560));
-  const narrow = W < 420;
-  const L = narrow ? 68 : 78, R = narrow ? 56 : 76, T = 6, rowH = 64, gap = 8, B = 34;
+  const w0 = Number(opts.width);
+  // 그려질 실제 폭으로 만든다(늘이거나 줄이면 글자가 같이 작아진다). 휴대폰(240~320)은 끝값 라벨에서 극 이름을 뺀 압축 배치
+  const W = Math.max(240, Math.round(Number.isFinite(w0) ? w0 : 560));
+  const narrow = W < 420, compact = W < 320;
+  const choices = normChoices(opts.choices), favor = favorMap(opts.favor);
+  const lane = choices.size ? 16 : 0;     // 결정 표시 줄
+  // 오른쪽 여백은 끝값 라벨('+100 야망', 압축 배치는 '+100')이 잘리지 않을 만큼
+  const L = compact ? 60 : narrow ? 64 : 78, R = compact ? 38 : narrow ? 70 : 80, T = 6, rowH = 64, gap = 8, B = 34 + lane;
   const plotW = W - L - R;
   const H = T + PERSONALITY.length * rowH + (PERSONALITY.length - 1) * gap + B;
   const x = (age) => L + (age - AGE0) / (AGE1 - AGE0) * plotW;
@@ -65,8 +85,10 @@ export function renderPersonalityMap(persHistory, opts = {}) {
     for (const a of [12, 14, 16]) out.push(`<line class="pm-grid" x1="${x(a) - 0.5}" x2="${x(a) - 0.5}" y1="${y0 + 3}" y2="${y0 + rowH - 3}" stroke="#2a2144" stroke-width="1"/>`);
     out.push(`<line class="pm-zero" x1="${L}" x2="${L + plotW}" y1="${mid}" y2="${mid}" stroke="#4a3d70" stroke-width="1"/>`);
     out.push(`<text class="pm-axis" x="0" y="${mid + 4.5}" fill="#efe8ff" font-size="13" font-weight="700">${esc(ax.name)}</text>`);
-    out.push(`<text class="pm-pole" x="${L - 7}" y="${y0 + 12}" text-anchor="end" fill="#a79fc4" font-size="10.5">${esc(ax.pos)} ▲</text>`);
-    out.push(`<text class="pm-pole" x="${L - 7}" y="${y0 + rowH - 4}" text-anchor="end" fill="#a79fc4" font-size="10.5">${esc(ax.neg)} ▼</text>`);
+    const fav = favor[ax.id];
+    const pole = (txt, yy, on) => `<text class="pm-pole${on ? ' pm-pole-fav' : ''}" x="${L - 7}" y="${yy}" text-anchor="end" fill="${on ? '#e7c36a' : '#a79fc4'}" font-size="10.5"${on ? ' font-weight="700"' : ''}>${esc(txt)}</text>`;
+    out.push(pole(`${fav === 1 ? '★ ' : ''}${ax.pos} ▲`, y0 + 12, fav === 1));
+    out.push(pole(`${fav === -1 ? '★ ' : ''}${ax.neg} ▼`, y0 + rowH - 4, fav === -1));
     const coords = pts.map(p => [x(p.age), y(p[ax.id])]);
     if (coords.length > 1) {
       out.push(`<path class="pm-area" d="M${coords[0][0]} ${mid} ${coords.map(([cx, cy]) => `L${cx.toFixed(1)} ${cy.toFixed(1)}`).join(' ')} L${coords[coords.length - 1][0]} ${mid}Z" fill="#e7c36a" fill-opacity=".12"/>`);
@@ -79,21 +101,30 @@ export function renderPersonalityMap(persHistory, opts = {}) {
     const end = pts[pts.length - 1][ax.id];
     const [ex, ey] = coords[coords.length - 1];
     const ly = Math.max(y0 + 11, Math.min(y0 + rowH - 3, ey + 4));
-    out.push(`<text class="pm-end" x="${(ex + 9).toFixed(1)}" y="${ly.toFixed(1)}" fill="#efe8ff" font-size="11.5" font-weight="600">${esc(signed(end))} <tspan class="pm-end-pole" fill="#a79fc4" font-weight="400">${esc(poleOf(ax, end))}</tspan></text>`);
+    out.push(`<text class="pm-end" x="${(ex + 8).toFixed(1)}" y="${ly.toFixed(1)}" fill="#efe8ff" font-size="11.5" font-weight="600">${esc(signed(end))}${compact ? '' : ` <tspan class="pm-end-pole" fill="#a79fc4" font-weight="400">${esc(poleOf(ax, end))}</tspan>`}</text>`);
     out.push(`</g>`);
   });
-  // 나이 눈금 + 성장 단계
+  // 해마다의 결정(생일 직후 보호자가 고른 1년 방향): 그 나이에 작은 마름모. 내용은 호버·표에서
   const by = T + PERSONALITY.length * rowH + (PERSONALITY.length - 1) * gap;
-  for (let a = AGE0; a <= AGE1; a += plotW < 260 ? 2 : 1) out.push(`<text class="pm-tick" x="${x(a).toFixed(1)}" y="${by + 13}" text-anchor="middle" fill="#a79fc4" font-size="10.5">${a}${a === AGE1 ? '세' : ''}</text>`);
-  if (plotW >= 220) for (const [a0, a1, nm] of STAGES) out.push(`<text class="pm-stage" x="${((x(a0) + x(a1)) / 2).toFixed(1)}" y="${by + 28}" text-anchor="middle" fill="#7d7599" font-size="10">${nm}</text>`);
+  if (lane) {
+    const ly = by + 9;
+    out.push(`<text class="pm-lane" x="0" y="${ly + 4}" fill="#a79fc4" font-size="10.5">결정</text>`);
+    out.push(`<line class="pm-grid" x1="${L}" x2="${L + plotW}" y1="${ly}" y2="${ly}" stroke="#2a2144" stroke-width="1"/>`);
+    for (const [age] of choices) out.push(`<path class="pm-choice" d="${DIAMOND(x(age), ly, 4.5)}" fill="#e7c36a" stroke="#1b1532" stroke-width="1.5"/>`);
+  }
+  // 나이 눈금 + 성장 단계
+  const ty = by + lane;
+  for (let a = AGE0; a <= AGE1; a += plotW < 260 ? 2 : 1) out.push(`<text class="pm-tick" x="${x(a).toFixed(1)}" y="${ty + 13}" text-anchor="middle" fill="#a79fc4" font-size="10.5">${a}${a === AGE1 ? '세' : ''}</text>`);
+  if (plotW >= 220) for (const [a0, a1, nm] of STAGES) out.push(`<text class="pm-stage" x="${((x(a0) + x(a1)) / 2).toFixed(1)}" y="${ty + 28}" text-anchor="middle" fill="#8f87ab" font-size="10">${nm}</text>`);
   // 나이별 읽기(호버) 영역: 다섯 축 값을 한 번에
   if (opts.interactive !== false) {
     const colW = plotW / (AGE1 - AGE0);
-    out.push(`<line class="pm-cross" x1="0" x2="0" y1="${T}" y2="${by}" stroke="#efe8ff" stroke-opacity=".45" stroke-width="1" visibility="hidden"/>`);
+    out.push(`<line class="pm-cross" x1="0" x2="0" y1="${T}" y2="${by + lane}" stroke="#efe8ff" stroke-opacity=".45" stroke-width="1" visibility="hidden"/>`);
     for (const p of pts) {
       const vals = PERSONALITY.map(ax => `${ax.id}:${p[ax.id]}`).join(',');
-      const tip = opts.nativeTitles === false ? '' : `<title>${esc(`${p.age}세 — ` + PERSONALITY.map(ax => `${ax.name} ${signed(p[ax.id])}(${poleOf(ax, p[ax.id])})`).join(' · '))}</title>`;
-      out.push(`<rect class="pm-hit" x="${(x(p.age) - colW / 2).toFixed(1)}" y="${T}" width="${colW.toFixed(1)}" height="${by - T}" fill="transparent" data-age="${p.age}" data-x="${x(p.age).toFixed(1)}" data-vals="${vals}">${tip}</rect>`);
+      const ch = choices.get(p.age);
+      const tip = opts.nativeTitles === false ? '' : `<title>${esc(`${p.age}세 — ` + PERSONALITY.map(ax => `${ax.name} ${signed(p[ax.id])}(${poleOf(ax, p[ax.id])})`).join(' · ') + (ch ? ` · 그해의 결정: ${ch}` : ''))}</title>`;
+      out.push(`<rect class="pm-hit" x="${(x(p.age) - colW / 2).toFixed(1)}" y="${T}" width="${colW.toFixed(1)}" height="${by + lane - T}" fill="transparent" data-age="${p.age}" data-x="${x(p.age).toFixed(1)}" data-vals="${vals}"${ch ? ` data-choice="${esc(ch)}"` : ''}>${tip}</rect>`);
     }
   }
   out.push('</svg>');
@@ -101,15 +132,42 @@ export function renderPersonalityMap(persHistory, opts = {}) {
 }
 
 // 표 보기 (호버 없이도 모든 값에 닿을 수 있게)
-export function personalityTableHTML(persHistory) {
+export function personalityTableHTML(persHistory, choicesList) {
   const pts = normHistory(persHistory);
   if (!pts.length) return '';
-  return `<table class="alb-ptable"><thead><tr><th scope="col">축</th>${pts.map(p => `<th scope="col">${p.age}세</th>`).join('')}</tr></thead><tbody>${PERSONALITY.map(ax => `<tr><th scope="row">${esc(ax.name)} <small>${esc(ax.pos)}/${esc(ax.neg)}</small></th>${pts.map(p => `<td>${signed(p[ax.id])}</td>`).join('')}</tr>`).join('')}</tbody></table>`;
+  const choices = normChoices(choicesList);
+  const table = `<table class="alb-ptable"><thead><tr><th scope="col">축</th>${pts.map(p => `<th scope="col">${p.age}세</th>`).join('')}</tr></thead><tbody>${PERSONALITY.map(ax => `<tr><th scope="row">${esc(ax.name)} <small>${esc(ax.pos)}/${esc(ax.neg)}</small></th>${pts.map(p => `<td>${signed(p[ax.id])}</td>`).join('')}</tr>`).join('')}</tbody></table>`;
+  const list = choices.size ? `<ol class="alb-choices" aria-label="해마다의 결정">${[...choices].map(([age, lb]) => `<li><b>${age}세</b> ${esc(lb)}</li>`).join('')}</ol>` : '';
+  return `<div class="alb-ptable-wrap">${table}</div>${list}`;
 }
 
-function pmBlock(persHistory, width, label) {
-  return `<div class="alb-pm">${renderPersonalityMap(persHistory, { width, nativeTitles: false, label })}<details class="alb-pm-table"><summary>표로 보기</summary>${personalityTableHTML(persHistory)}</details></div>`;
+// opts: { choices, favor }
+function pmBlock(persHistory, width, label, opts = {}) {
+  const fav = (opts.favor || []).filter(f => f?.pole);
+  const legend = [
+    normChoices(opts.choices).size ? `<span><svg viewBox="0 0 10 10" width="9" height="9" aria-hidden="true"><path d="M5 0L10 5L5 10L0 5Z" fill="#e7c36a"/></svg> 그해의 결정</span>` : '',
+    fav.length ? `<span class="alb-pm-fav">★ 이 길이 반기는 성격: ${fav.map(f => esc(f.pole)).join(' · ')}</span>` : '',
+  ].filter(Boolean).join('');
+  return `<div class="alb-pm">${renderPersonalityMap(persHistory, { width, nativeTitles: false, label, choices: opts.choices, favor: opts.favor })}${legend ? `<div class="alb-pm-legend">${legend}</div>` : ''}<details class="alb-pm-table"><summary>표로 보기</summary>${personalityTableHTML(persHistory, opts.choices)}</details></div>`;
 }
+
+// 컨테이너 폭에 맞춰 그리고, 폭이 바뀌면 다시 그린다(엔딩 화면 등 앨범 밖에서 쓸 때). → 해제 함수
+// opts: renderPersonalityMap과 같음(width 제외). 예: mountPersonalityMap(el, S.persHistory, { choices: S.annualLog, favor: endingFavor(def) })
+export function mountPersonalityMap(container, persHistory, opts = {}) {
+  let lastW = 0;
+  const draw = () => {
+    const w = Math.floor(container.clientWidth || 0) || 560;
+    if (w === lastW) return;
+    lastW = w;
+    container.innerHTML = renderPersonalityMap(persHistory, { ...opts, width: w });
+  };
+  draw();
+  const unwire = wirePersonalityHover(container);
+  const ro = typeof ResizeObserver === 'function' ? new ResizeObserver(draw) : null;
+  ro?.observe(container);
+  return () => { ro?.disconnect(); unwire(); };
+}
+export const endingFavor = (idOrDef) => M.endingFavor(typeof idOrDef === 'string' ? ENDINGS.find(d => d.id === idOrDef) : idOrDef);
 
 // ──────────────────────────────────────────────────────────────────────
 // HTML 조각 (순수 함수 — 테스트 가능)
@@ -132,12 +190,12 @@ export function albumGridHTML(entries) {
     <section class="alb-group">
       <h3>${catChip(cat)}<span class="alb-count">${list.filter(e => e.achieved).length} / ${list.length}</span></h3>
       <div class="alb-grid">${list.map(e => `
-        <button type="button" class="alb-card${e.achieved ? ' got' : ''}${e.secret ? ' secret' : ''}${e.hidden && e.achieved ? ' shine' : ''}" data-act="card" data-id="${esc(e.id)}" aria-label="${esc(e.secret ? '알 수 없는 히든 엔딩' : e.name)}${e.achieved ? `, ${e.count}회 달성` : ', 미달성'}">
+        <button type="button" class="alb-card${e.achieved ? ' got' : ''}${e.secret ? ' secret' : ''}${e.hidden && e.achieved ? ' shine' : ''}" data-act="card" data-id="${esc(e.id)}" aria-label="${esc(e.secret ? '알 수 없는 히든 엔딩' : e.name)}${e.achieved ? `, ${e.count}회 달성${e.letters.some(l => !l.read) ? ', 안 읽은 편지 있음' : ''}` : ', 미달성'}">
           ${artHTML(e)}
           <span class="alb-card-body">
             <b class="alb-card-name">${esc(e.name)}</b>
             ${e.achieved
-              ? `<span class="alb-card-meta">${e.count}회 · 처음 ${esc(fmtDate(e.firstAt))}${e.letters.some(l => !l.read) ? '<i class="alb-dot" aria-label="안 읽은 편지"></i>' : ''}</span>`
+              ? `<span class="alb-card-meta">${e.count}회 · 처음 ${esc(fmtDate(e.firstAt))}${e.letters.some(l => !l.read) ? '<i class="alb-dot" aria-hidden="true"></i>' : ''}</span>`
               : `<span class="alb-card-hint">${esc(e.hint)}</span>`}
           </span>
         </button>`).join('')}
@@ -169,11 +227,12 @@ export function detailHTML(e, width = 520) {
       ${e.achieved ? `
         <div class="alb-kv"><span>달성 <b>${e.count}</b>회</span><span>처음 ${esc(fmtDate(e.firstAt))}</span>${e.lastAt && e.lastAt !== e.firstAt ? `<span>최근 ${esc(fmtDate(e.lastAt))}</span>` : ''}</div>
         ${e.epilogue ? `<div class="alb-epi"><h4>10년 후</h4><p>${esc(e.epilogue)}</p></div>` : ''}
-        ${best ? `<div class="alb-best"><h4>가장 빛났던 아이</h4><p><b>${esc(best.name)}</b> · ${esc(gName(best.guardian))}와 함께 · ${best.runNo ? `${ordinal(best.runNo)} 아이 · ` : ''}${esc(fmtDate(best.at))}</p>
-          ${best.persHistory?.length ? `<h4>그 아이의 성격 지도</h4>${pmBlock(best.persHistory, width, `${best.name}의 성격 지도`)}` : ''}</div>` : ''}
+        ${best ? `<div class="alb-best"><h4>가장 빛났던 아이</h4><p><b>${esc(best.name)}</b> · ${esc(withGuardian(best.guardian))} · ${best.runNo ? `${ordinal(best.runNo)} 아이 · ` : ''}${esc(fmtDate(best.at))}</p>
+          ${best.persHistory?.length ? `<h4>그 아이의 성격 지도</h4>${pmBlock(best.persHistory, width, `${best.name}의 성격 지도`, { choices: best.choices, favor: e.favor })}` : ''}</div>` : ''}
         <div class="alb-eletters"><h4>이 길에서 온 편지 <small>${e.letters.length}${e.lettersTotal ? ` / ${e.lettersTotal}` : ''}</small></h4>
-          ${e.letters.length ? `<ul>${e.letters.map(l => `<li><button type="button" class="alb-link" data-act="goto-letter" data-key="${esc(l.key)}">${l.read ? '' : '<i class="alb-dot" aria-label="안 읽음"></i>'}${esc(l.title)}</button></li>`).join('')}</ul>`
-            : `<p class="alb-muted">${e.lettersTotal || e.lettersUnlocked ? '다음 아이를 키우는 동안 편지가 올 것이다.' : '아직 이 길의 편지는 없다.'}</p>`}
+          ${e.letters.length ? `<ul>${e.letters.map(l => `<li><button type="button" class="alb-link" data-act="goto-letter" data-key="${esc(l.key)}">${l.read ? '' : '<i class="alb-dot" aria-hidden="true"></i><span class="alb-sr">안 읽음: </span>'}${esc(l.title)}</button></li>`).join('')}</ul>` : ''}
+          ${e.lettersTotal && e.letters.length < e.lettersTotal ? `<p class="alb-muted">${e.letters.length ? '남은 편지는' : '이 길의 편지는'} 다음 아이와의 8년이 끝날 때마다 한 통씩 도착한다.</p>`
+            : !e.letters.length ? '<p class="alb-muted">아직 이 길의 편지는 없다.</p>' : ''}
         </div>`
       : `<p class="alb-hint">${esc(e.hint)}</p><p class="alb-muted">${e.secret ? '조건을 만족하면 이 자리에 이름이 새겨진다.' : '아직 이 길을 걸은 아이가 없다.'}</p>`}
     </div>
@@ -181,11 +240,11 @@ export function detailHTML(e, width = 520) {
 }
 
 export function lettersHTML(inbox, selectedKey) {
-  if (!inbox.length) return `<div class="alb-empty">${starIcon(22)}<p>아직 도착한 편지가 없다.</p><p class="alb-muted">아이를 떠나보낸 뒤, 다음 아이를 키우는 동안 한 통씩 편지가 온다.</p></div>`;
+  if (!inbox.length) return `<div class="alb-empty">${starIcon(22)}<p>아직 도착한 편지가 없다.</p><p class="alb-muted">아이가 처음 보는 길로 떠나면 그 아이에게서 첫 편지가 온다.<br>남은 편지는 다음 아이와의 8년이 끝날 때마다 한 통씩 도착한다.</p></div>`;
   const sel = inbox.find(l => l.key === selectedKey) ?? null;
   return `<div class="alb-letters${sel ? ' reading' : ''}">
     <ul class="alb-llist" aria-label="받은 편지">${inbox.map(l => `<li><button type="button" class="alb-litem${l.key === selectedKey ? ' on' : ''}${l.read ? '' : ' unread'}" data-act="letter" data-key="${esc(l.key)}">
-      <span class="alb-ltitle">${l.read ? '' : '<i class="alb-dot" aria-label="안 읽음"></i>'}${esc(l.title)}</span>
+      <span class="alb-ltitle">${l.read ? '' : '<i class="alb-dot" aria-hidden="true"></i><span class="alb-sr">안 읽음: </span>'}${esc(l.title)}</span>
       <span class="alb-lmeta">${esc(l.from?.name)} · ${l.hidden ? '히든 · ' : ''}${esc(l.endingName)} · ${esc(fmtDate(l.at))}</span></button></li>`).join('')}</ul>
     <div class="alb-lview">${sel ? `<article class="alb-paper" aria-label="${esc(sel.title)}">
         <button type="button" class="alb-back" data-act="letter-back">← 목록</button>
@@ -205,10 +264,10 @@ export function runsHTML(runs, width = 520) {
         <b class="alb-run-name">${esc(r.name)}</b>
         <span class="alb-run-end">${catChip(r.cat)} <b>${esc(r.endingName)}</b>${r.hidden ? '<span class="alb-badge">히든</span>' : ''}</span>
       </header>
-      <div class="alb-run-meta">${esc(gName(r.guardian))}와 함께 · ${esc(fmtDate(r.at))}${r.shards ? ` · ${starIcon(11)} +${r.shards}` : ''}${r.runnerUp?.name ? ` · 다른 길이었다면: ${esc(r.runnerUp.name)}` : ''}</div>
+      <div class="alb-run-meta">${[esc(withGuardian(r.guardian)), esc(fmtDate(r.at)), r.shards ? nowrap(`${starIcon(11)} +${r.shards}`) : '', r.runnerUp?.name ? nowrap(`다른 길이었다면: ${esc(r.runnerUp.name)}`) : ''].filter(Boolean).join(' · ')}</div>
       <div class="alb-run-stats">${r.topStats.map(t => `<span class="alb-pill">${esc(statName(t.id))} <b>${t.v}</b></span>`).join('')}<span class="alb-pill dim">신뢰 <b>${r.trust}</b></span></div>
-      <div class="alb-run-counts">${COUNTER_NAMES.filter(([k]) => r.counters[k] != null).map(([k, nm]) => `${nm} ${r.counters[k]}`).join(' · ')}</div>
-      ${r.persHistory.length ? `<details class="alb-run-pm"><summary>성격 지도 보기</summary>${pmBlock(r.persHistory, width, `${r.name}의 성격 지도`)}</details>` : ''}
+      <div class="alb-run-counts">${COUNTER_NAMES.filter(([k]) => Object.prototype.hasOwnProperty.call(r.counters, k)).map(([k, nm]) => nowrap(`${nm} ${r.counters[k]}`)).join(' · ')}</div>
+      ${r.persHistory.length ? `<details class="alb-run-pm"><summary>성격 지도 보기</summary>${pmBlock(r.persHistory, width, `${r.name}의 성격 지도`, { choices: r.choices, favor: endingFavor(r.endingId) })}</details>` : ''}
     </article>`).join('')}</div>`;
 }
 
@@ -217,7 +276,7 @@ export function shopHTML(opts, flash) {
   return `<div class="alb-shop">
     <div class="alb-shop-head">
       <div class="alb-shard-big">${starIcon(28)}<b>${opts.shards}</b><span>가진 별 조각</span></div>
-      <p class="alb-muted">완주할 때마다 +1 · 처음 보는 엔딩 +2 · 처음 보는 히든 엔딩 +3. 보호자 출신은 <b>지금까지 모은 조각(${opts.shardsEarned})</b>으로 열리고, 조각을 써도 닫히지 않는다.</p>
+      <p class="alb-muted">8년을 끝까지 함께하면 +1, 처음 보는 엔딩이면 +2를 더(히든 엔딩이면 +3). 보호자 출신은 <b>지금까지 모은 조각(${opts.shardsEarned})</b>으로 열리고, 조각을 써도 닫히지 않는다.</p>
     </div>
     ${flash ? `<div class="alb-flash ${flash.ok ? 'ok' : 'no'}" role="status">${esc(flash.text)}</div>` : '<div class="alb-flash-slot" role="status"></div>'}
     <h3 class="alb-h">보호자 출신</h3>
@@ -226,14 +285,14 @@ export function shopHTML(opts, flash) {
       <small>${esc(x.desc)}</small>
       ${x.need ? `<div class="alb-meter" role="meter" aria-valuemin="0" aria-valuemax="${x.need}" aria-valuenow="${Math.min(opts.shardsEarned, x.need)}" aria-label="${esc(x.name)} 해금 진행"><i style="width:${Math.min(100, opts.shardsEarned / x.need * 100).toFixed(0)}%"></i></div><small class="alb-guard-need">${x.unlocked ? `누적 ${x.need}개로 열림` : `${Math.min(opts.shardsEarned, x.need)} / ${x.need}`}</small>` : '<small class="alb-guard-need">처음부터 열려 있음</small>'}
     </div>`).join('')}</div>
-    <h3 class="alb-h">시작 보너스 <small>한 번 사면 계속 쓸 수 있다 · 새 게임마다 최대 ${opts.maxActive}개 적용</small></h3>
+    <h3 class="alb-h">시작 보너스 <small>한 번 얻으면 계속 쓸 수 있다 · 새 게임마다 최대 ${opts.maxActive}개 적용</small></h3>
     <div class="alb-bonuses">${b.map(x => {
       const state = x.owned ? 'owned' : !x.available ? 'locked' : x.affordable ? 'buy' : 'poor';
       const btn = { owned: '가지고 있음', locked: '잠김', buy: '조각으로 얻기', poor: `조각 ${x.cost - opts.shards}개 부족` }[state];
       return `<div class="alb-bonus ${state}">
         <div class="alb-bonus-top"><b>${esc(x.name)}</b><span class="alb-cost">${starIcon(12)} ${x.cost}</span></div>
         <p>${esc(x.desc)}</p>
-        ${state === 'locked' && x.requirement ? `<small class="alb-muted">${esc(x.requirement)} 열린다</small>` : ''}
+        ${state === 'locked' && x.requirement ? `<small class="alb-muted">${esc(x.requirement)} 열린다.</small>` : ''}
         <button type="button" data-act="buy" data-id="${esc(x.id)}" ${state === 'buy' ? 'class="primary"' : 'disabled'}>${esc(btn)}</button>
       </div>`; }).join('')}</div>
   </div>`;
@@ -274,6 +333,7 @@ function wirePersonalityHover(root) {
       const n = document.createElement('span'); n.textContent = `${ax.name} · ${poleOf(ax, vals[ax.id])}`;
       row.append(v, n); tip.appendChild(row);
     }
+    if (hit.dataset.choice) { const c = document.createElement('div'); c.className = 'alb-tip-c'; c.textContent = `그해의 결정 · ${hit.dataset.choice}`; tip.appendChild(c); }
     document.body.appendChild(tip);
     const r = hit.getBoundingClientRect(), tw = tip.offsetWidth, th = tip.offsetHeight;
     let left = r.left + r.width / 2 + 12; if (left + tw > window.innerWidth - 8) left = r.left + r.width / 2 - tw - 12;
@@ -300,7 +360,13 @@ export function renderAlbum(container, meta, opts = {}) {
   let unwire = null, lastFocus = null;
 
   const changed = (m) => { st.meta = m; opts.onChange?.(m); };
-  const width = () => Math.max(300, Math.min(640, (container.clientWidth || 600) - 64));
+  // 성격 지도가 실제로 받을 폭: 지난 아이들 카드(테두리·여백 ≈ 34) + 지도 상자(≈ 26) / 상세 시트는 화면 기준(최대 620, 여백 ≈ 68)
+  const innerWidth = () => {
+    const cs = typeof getComputedStyle === 'function' ? getComputedStyle(container) : null;
+    return (container.clientWidth || 600) - (cs ? (parseFloat(cs.paddingLeft) || 0) + (parseFloat(cs.paddingRight) || 0) : 0);
+  };
+  const runsWidth = () => Math.max(240, Math.min(720, Math.floor(innerWidth() - 60)));
+  const sheetWidth = () => Math.max(240, Math.min((document.documentElement?.clientWidth || 800) - 32, 620) - 68);
 
   function draw() {
     unwire?.();
@@ -310,16 +376,16 @@ export function renderAlbum(container, meta, opts = {}) {
     let body = '';
     if (st.tab === 'album') body = `${albumSummaryHTML(st.meta, entries)}${st.meta.totalRuns ? '' : '<p class="alb-intro">아직 끝까지 함께한 아이가 없다. 첫 8년이 끝나면 이곳에 첫 장이 붙는다.</p>'}${albumGridHTML(entries)}`;
     else if (st.tab === 'letters') body = lettersHTML(inbox, st.letter);
-    else if (st.tab === 'runs') body = runsHTML(st.meta.runs, width());
+    else if (st.tab === 'runs') body = runsHTML(st.meta.runs, runsWidth());
     else body = shopHTML(M.startOptions(st.meta), st.flash);
-    const detail = st.tab === 'album' && st.detail ? detailHTML(entries.find(e => e.id === st.detail), Math.min(width(), 560)) : '';
+    const detail = st.tab === 'album' && st.detail ? detailHTML(entries.find(e => e.id === st.detail), sheetWidth()) : '';
     container.innerHTML = `<div class="alb">
       <header class="alb-head">
         <h2>${starIcon(18)} 별의 앨범</h2>
         <span class="alb-head-shards" title="가진 별 조각">${starIcon(13)} ${st.meta.shards}</span>
         ${opts.onClose ? '<button type="button" class="ghost alb-close" data-act="close">닫기</button>' : ''}
       </header>
-      <nav class="alb-tabs" role="tablist">${TABS.map(([id, nm, short]) => `<button type="button" role="tab" aria-selected="${st.tab === id}" class="alb-tab${st.tab === id ? ' on' : ''}" data-act="tab" data-tab="${id}" aria-label="${nm}"><span class="alb-tl">${nm}</span><span class="alb-ts" aria-hidden="true">${short}</span>${id === 'letters' && unread ? `<span class="alb-badge-n" aria-label="안 읽은 편지 ${unread}통">${unread}</span>` : ''}</button>`).join('')}</nav>
+      <nav class="alb-tabs" role="tablist">${TABS.map(([id, nm, short]) => `<button type="button" role="tab" aria-selected="${st.tab === id}" class="alb-tab${st.tab === id ? ' on' : ''}" data-act="tab" data-tab="${id}" aria-label="${nm}${id === 'letters' && unread ? `, 안 읽은 편지 ${unread}통` : ''}"><span class="alb-tl">${nm}</span><span class="alb-ts" aria-hidden="true">${short}</span>${id === 'letters' && unread ? `<span class="alb-badge-n" aria-hidden="true">${unread}</span>` : ''}</button>`).join('')}</nav>
       <div class="alb-body" role="tabpanel">${body}</div>
       ${detail}
     </div>`;

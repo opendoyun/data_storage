@@ -17,7 +17,7 @@ import { ENDINGS } from '../data/endings.js';
 import { LETTERS, CATEGORY_LETTERS } from '../data/letters.js';
 import { STATS, STAT_CATS, PERSONALITY } from '../data/stats.js';
 import { ITEM_MAP } from '../data/items.js';
-import { fillName } from './josa.js';
+import { fillName, josa } from './josa.js';
 
 export const META_KEY = 'starborn_meta';
 export const META_BACKUP_KEY = 'starborn_meta_backup';
@@ -26,6 +26,10 @@ export const MAX_RUNS = 30;               // 보관하는 지난 회차 요약 �
 export const MAX_LEGACY = 5;              // 다음 회차에 넘기는 유산(이전 딸) 수 — engine.newGame과 동일
 export const MAX_ACTIVE_BONUSES = 3;      // 한 회차에 적용할 수 있는 시작 보너스 수
 export const LETTERS_PER_ENDING = 3;      // 편지 데이터가 아직 없을 때의 기본 상한 (콘텐츠 계약 §9: 엔딩마다 3통)
+// 후일담은 저빈도 콘텐츠(GDD 4.8): 한 회차가 끝날 때 여는 '이어지는 편지'(이전에 달성한 엔딩의 다음 편지) 수의 상한.
+// 처음 본 엔딩의 첫 편지는 이 상한과 별개. 평소 플레이(매 회차 새 엔딩)에서도 회차당 최대 1 + 2 = 3통이고,
+// 구버전 기록을 옮겨 온 직후처럼 밀린 편지가 많아도 한꺼번에 쏟아지지 않는다(오래된 엔딩부터 차례로).
+export const MAX_FOLLOWUP_LETTERS_PER_RUN = 2;
 // 별 조각: 완주 +1, 처음 본 엔딩 +2, 처음 본 히든 엔딩은 +2 대신 +3
 export const SHARD_RULES = Object.freeze({ run: 1, newEnding: 2, newHidden: 3 });
 
@@ -47,6 +51,9 @@ const itemStatGrant = (itemId) => {
   return { items: { [itemId]: 1 }, stats };
 };
 const statName = (id) => STATS.find(s => s.id === id)?.name ?? id;
+// 저장 데이터의 id로 표를 찾을 때는 자기 속성만 본다('constructor'·'toString' 같은 값이 통과하지 않도록)
+const own = (obj, k) => typeof k === 'string' && Object.prototype.hasOwnProperty.call(obj, k);
+const guardianOk = (id) => own(GUARDIANS, id);
 const describeStats = (stats) => Object.entries(stats || {}).map(([k, v]) => `${statName(k)} ${v > 0 ? '+' : ''}${v}`).join(', ');
 
 export const KEEPSAKE_STAT_BONUS = 12;
@@ -61,12 +68,14 @@ export const START_BONUSES = [
     const g = itemStatGrant('silver_hairpin');
     const it = ITEM_MAP.silver_hairpin;
     return g && { id: 'star_hairpin', name: it.name, cost: 2, grant: g,
-      desc: `별똥별과 함께 떨어져 있던 작은 머리핀. 처음부터 지니고 시작${Object.keys(g.stats).length ? ` (${describeStats(g.stats)})` : ''}` };
+      desc: `별똥별과 함께 들판에 떨어져 있던 작은 머리핀. 아이가 처음부터 지니고 있다.${Object.keys(g.stats).length ? ` ${describeStats(g.stats)}` : ''}` };
   })(),
   { id: 'keepsake', name: '지난 아이의 선물', cost: 2, requires: { runs: 1 }, dynamic: 'keepsake',
-    desc: `가장 최근에 떠나보낸 아이가 남긴 물건. 그 아이가 가장 잘하던 능력 두 가지 +${KEEPSAKE_STAT_BONUS}` },
+    desc: `가장 최근에 떠나보낸 아이가 두고 간 물건. 그 아이가 가장 잘하던 능력 두 가지 +${KEEPSAKE_STAT_BONUS}` },
 ].filter(Boolean);
 export const BONUS_MAP = Object.fromEntries(START_BONUSES.map(b => [b.id, b]));
+const ENDING_DEF = new Map(ENDINGS.map(d => [d.id, d]));
+const bonusOf = (id) => (own(BONUS_MAP, id) ? BONUS_MAP[id] : null);
 
 // 히든 엔딩 미달성 시 보여 줄 흐릿한 힌트. 엔딩 정의에 hint 문자열이 있으면 그것을 우선한다.
 export const HIDDEN_HINTS = {
@@ -85,12 +94,28 @@ export function emptyMeta() {
 
 const clone = (x) => JSON.parse(JSON.stringify(x));
 const isObj = (x) => !!x && typeof x === 'object' && !Array.isArray(x);
-const int0 = (x) => { const n = Math.floor(Number(x)); return Number.isFinite(n) && n > 0 ? n : 0; };
+const INT_CAP = 999999;   // 손상된 저장의 터무니없는 수(1e308 등)가 화면을 깨뜨리지 않도록
+const int0 = (x) => { const n = Math.floor(Number(x)); return Number.isFinite(n) && n > 0 ? Math.min(n, INT_CAP) : 0; };
 const num = (x, d = 0) => { const n = Number(x); return Number.isFinite(n) ? n : d; };
 const str = (x, d = '') => (typeof x === 'string' ? x : d);
 const clampP = (v) => Math.max(-100, Math.min(100, Math.round(num(v)))) || 0;   // -0 → 0
 const PERS_IDS = PERSONALITY.map(p => p.id);
 const STAT_IDS = STATS.map(s => s.id);
+const BAD_KEYS = new Set(['__proto__', 'prototype', 'constructor']);
+const okKey = (k) => typeof k === 'string' && k.length > 0 && k.length <= 64 && !BAD_KEYS.has(k);
+const EPILOGUE_MAX = 1200;
+// 해마다의 결정(engine annualLog: 11~17세 생일 직후 보호자의 1년 방향) → 성격 지도에 표시
+function normChoices(list) {
+  if (!Array.isArray(list)) return [];
+  const byAge = new Map();
+  for (const c of list) {
+    if (!isObj(c)) continue;
+    const age = Math.round(Number(c.age)), label = str(c.label).trim().slice(0, 40);
+    if (!Number.isFinite(age) || age < 10 || age > 18 || !label) continue;
+    byAge.set(age, { age, label });
+  }
+  return [...byAge.values()].sort((a, b) => a.age - b.age);
+}
 
 function normPers(list) {
   if (!Array.isArray(list)) return [];
@@ -103,19 +128,19 @@ function normPers(list) {
 }
 function normFrom(f) {
   if (!isObj(f)) return null;
-  return { name: str(f.name, '아이'), guardian: GUARDIANS[f.guardian] ? f.guardian : 'knight', runNo: int0(f.runNo) || null, at: str(f.at) };
+  return { name: str(f.name, '아이'), guardian: guardianOk(f.guardian) ? f.guardian : 'knight', runNo: int0(f.runNo) || null, at: str(f.at) };
 }
 function normRun(r, i) {
   if (!isObj(r) || typeof r.endingId !== 'string' || !r.endingId) return null;
   return {
     no: int0(r.no) || i + 1, key: str(r.key), at: str(r.at),
-    name: str(r.name, '아이'), guardian: GUARDIANS[r.guardian] ? r.guardian : 'knight', playthrough: int0(r.playthrough) || null,
+    name: str(r.name, '아이'), guardian: guardianOk(r.guardian) ? r.guardian : 'knight', playthrough: int0(r.playthrough) || null,
     endingId: r.endingId, endingName: str(r.endingName, r.endingId), cat: str(r.cat, '기타'), hidden: !!r.hidden,
     runnerUp: isObj(r.runnerUp) ? { id: str(r.runnerUp.id), name: str(r.runnerUp.name) } : null,
     topStats: Array.isArray(r.topStats) ? r.topStats.filter(t => isObj(t) && STAT_IDS.includes(t.id)).map(t => ({ id: t.id, v: int0(t.v) })).slice(0, 4) : [],
     statSum: int0(r.statSum), trust: Math.round(num(r.trust, 0)) || 0,
     counters: isObj(r.counters) ? Object.fromEntries(Object.entries(r.counters).filter(([, v]) => Number.isFinite(Number(v))).map(([k, v]) => [k, int0(v)])) : {},
-    persHistory: normPers(r.persHistory),
+    persHistory: normPers(r.persHistory), choices: normChoices(r.choices),
     near: Array.isArray(r.near) ? r.near.filter(isObj).map(x => ({ id: str(x.id), name: str(x.name), score: Math.round(num(x.score)) })).slice(0, 3) : [],
     shards: int0(r.shards),
   };
@@ -125,9 +150,15 @@ function normEndingRec(id, rec) {
   if (!isObj(rec)) return null;
   const count = int0(rec.count);
   if (!count) return null;
-  const best = isObj(rec.best) ? { ...normFrom(rec.best), score: Math.round(num(rec.best.score)), statSum: int0(rec.best.statSum), persHistory: normPers(rec.best.persHistory) } : null;
-  const letters = Array.isArray(rec.letters) ? rec.letters.filter(isObj).map((l, i) => ({ i, at: str(l.at), from: normFrom(l.from) })) : [];
-  return { name: str(rec.name, id), cat: str(rec.cat), hidden: !!rec.hidden, count, firstAt: str(rec.firstAt), lastAt: str(rec.lastAt, str(rec.firstAt)),
+  const def = ENDING_DEF.get(id);   // 구버전 기록(id만 있음)은 지금의 엔딩 데이터로 이름·범주를 채운다
+  let best = null;
+  if (isObj(rec.best)) {
+    best = { ...normFrom(rec.best), score: Math.round(num(rec.best.score)), statSum: int0(rec.best.statSum), persHistory: normPers(rec.best.persHistory), choices: normChoices(rec.best.choices) };
+    const epi = str(rec.best.epilogue).slice(0, EPILOGUE_MAX);
+    if (epi) best.epilogue = epi;   // 그 아이가 실제로 받은 에필로그(함수형 에필로그는 기록 없이는 다시 만들 수 없다)
+  }
+  const letters = Array.isArray(rec.letters) ? rec.letters.filter(isObj).slice(0, 12).map((l, i) => ({ i, at: str(l.at), from: normFrom(l.from) })) : [];
+  return { name: str(rec.name) || def?.name || id, cat: str(rec.cat) || def?.cat || '', hidden: rec.hidden == null ? !!def?.hidden : !!rec.hidden, count, firstAt: str(rec.firstAt), lastAt: str(rec.lastAt, str(rec.firstAt)),
     best, last: normFrom(rec.last) ?? (best ? { name: best.name, guardian: best.guardian, runNo: best.runNo, at: best.at } : null), letters };
 }
 
@@ -138,28 +169,29 @@ export function migrateMeta(raw) {
   if (!isObj(raw)) return m;
   // 엔딩 기록
   if (Array.isArray(raw.endings)) {
-    for (const id of raw.endings) if (typeof id === 'string' && id && !m.endings[id]) m.endings[id] = normEndingRec(id, 1);
+    for (const id of raw.endings) if (okKey(id) && !own(m.endings, id)) m.endings[id] = normEndingRec(id, 1);
   } else if (isObj(raw.endings)) {
-    for (const [id, rec] of Object.entries(raw.endings)) { const r = normEndingRec(id, rec); if (r) m.endings[id] = r; }
+    for (const [id, rec] of Object.entries(raw.endings)) { if (!okKey(id)) continue; const r = normEndingRec(id, rec); if (r) m.endings[id] = r; }
   }
-  const runs = Array.isArray(raw.runs) ? raw.runs.map(normRun).filter(Boolean) : [];
+  const runs = Array.isArray(raw.runs) ? raw.runs.map(normRun).filter(r => r && okKey(r.endingId)) : [];
   m.runs = runs.slice(-MAX_RUNS);
   // 엔딩 기록이 없고 회차 요약만 있는 경우: 요약으로 앨범을 복원
-  for (const r of runs) if (!m.endings[r.endingId]) m.endings[r.endingId] = normEndingRec(r.endingId, { count: 1, name: r.endingName, cat: r.cat, hidden: r.hidden, firstAt: r.at, lastAt: r.at, last: r });
+  for (const r of runs) if (!own(m.endings, r.endingId)) m.endings[r.endingId] = normEndingRec(r.endingId, { count: 1, name: r.endingName, cat: r.cat, hidden: r.hidden, firstAt: r.at, lastAt: r.at, last: r });
   const endingCount = Object.values(m.endings).reduce((a, r) => a + r.count, 0);
   m.totalRuns = Math.max(int0(raw.totalRuns), runs.length, endingCount);
-  m.owned = [...new Set((Array.isArray(raw.owned) ? raw.owned : []).filter(id => typeof id === 'string' && BONUS_MAP[id]))];
+  m.owned = [...new Set((Array.isArray(raw.owned) ? raw.owned : []).filter(id => bonusOf(id)))];
   m.shards = int0(raw.shards);
   const spent = m.owned.reduce((a, id) => a + BONUS_MAP[id].cost, 0);
   m.shardsEarned = Math.max(int0(raw.shardsEarned), m.shards + spent);
-  if (isObj(raw.lettersRead)) for (const [k, v] of Object.entries(raw.lettersRead)) if (v) m.lettersRead[k] = true;
+  if (isObj(raw.lettersRead)) for (const [k, v] of Object.entries(raw.lettersRead)) if (v && typeof k === 'string' && k.length <= 80 && !BAD_KEYS.has(k)) m.lettersRead[k] = true;
   return m;
 }
 
 // ──────────────────────────────────────────────────────────────────────
 // 저장소 (localStorage 등). 접근 불가·손상 시 빈 메타로 시작하고, 손상 원본은 백업 키에 보관한다.
 // ──────────────────────────────────────────────────────────────────────
-// status: 'empty'(처음) | 'ok' | 'migrated'(구버전 변환) | 'corrupt'(손상 → 새로 시작) | 'unavailable'(저장소 접근 불가)
+// status: 'empty'(처음) | 'ok' | 'migrated'(구버전 변환) | 'newer'(더 새 버전이 쓴 기록 — 원본을 백업 키에 남기고 읽을 수 있는 만큼 읽음)
+//         | 'corrupt'(손상 → 새로 시작, 원본은 백업 키에) | 'unavailable'(저장소 접근 불가)
 export function loadMetaReport(storage, key = META_KEY) {
   let raw;
   try { raw = storage?.getItem?.(key); } catch { return { meta: emptyMeta(), status: 'unavailable' }; }
@@ -170,6 +202,10 @@ export function loadMetaReport(storage, key = META_KEY) {
   if (!isObj(parsed)) {
     try { storage.setItem(META_BACKUP_KEY, String(raw)); } catch { /* 백업 실패는 무시 */ }
     return { meta: emptyMeta(), status: 'corrupt' };
+  }
+  if (Number(parsed.v) > META_VERSION) {
+    try { storage.setItem(META_BACKUP_KEY, String(raw)); } catch { /* 백업 실패는 무시 */ }
+    return { meta: migrateMeta(parsed), status: 'newer' };
   }
   return { meta: migrateMeta(parsed), status: parsed.v === META_VERSION ? 'ok' : 'migrated' };
 }
@@ -193,7 +229,7 @@ function letterSource(endingId, cat, src) {
   return [];
 }
 function letterCap(endingId, cat, src) { const n = letterSource(endingId, cat, src).length; return n > 0 ? n : LETTERS_PER_ENDING; }
-const guardianNeed = (id) => int0(GUARDIANS[id]?.unlock?.shards);
+const guardianNeed = (id) => (guardianOk(id) ? int0(GUARDIANS[id].unlock?.shards) : 0);
 function bonusAvailable(b, meta) { return !b.requires?.runs || meta.totalRuns >= b.requires.runs; }
 
 // opts.letters / opts.categoryLetters: 편지 데이터 주입(테스트·데모). 기본은 data/letters.js
@@ -208,7 +244,7 @@ export function recordRun(meta0, finalState, nowIso, opts = {}) {
   if (meta.runs.some(r => r.key === key)) return { meta, duplicate: true, ...none };
 
   const prevAchieved = Object.keys(meta.endings);
-  const isNew = !meta.endings[e.id];
+  const isNew = !own(meta.endings, e.id);
   const hidden = !!e.hidden;
   const earnedBefore = meta.shardsEarned;
   const availableBefore = new Set(START_BONUSES.filter(b => bonusAvailable(b, meta)).map(b => b.id));
@@ -225,13 +261,14 @@ export function recordRun(meta0, finalState, nowIso, opts = {}) {
   // 회차 요약
   const s = finalState;
   const persHistory = normPers(s.persHistory ?? e.persHistory);
+  const choices = normChoices(s.annualLog ?? e.annualLog);
   const topStats = STATS.map(st => ({ id: st.id, v: int0(s.stats?.[st.id]) })).sort((a, b) => b.v - a.v).slice(0, 3);
   const statSum = statSumOf(s);
   const score = Array.isArray(e.top) ? e.top.find(t => t.id === e.id)?.score : undefined;
   const run = normRun({
     no: runNo, key, at, name: s.name, guardian: s.guardian, playthrough: s.playthrough ?? runNo,
     endingId: e.id, endingName: e.name, cat: e.cat, hidden, runnerUp: e.runnerUp ?? null,
-    topStats, statSum, trust: s.trust, counters: s.counters ?? {}, persHistory,
+    topStats, statSum, trust: s.trust, counters: s.counters ?? {}, persHistory, choices,
     near: Array.isArray(e.top) ? e.top.slice(0, 3) : [], shards: shardsGained,
   }, runNo - 1);
   meta.runs.push(run);
@@ -239,28 +276,38 @@ export function recordRun(meta0, finalState, nowIso, opts = {}) {
   const from = { name: run.name, guardian: run.guardian, runNo, at };
 
   // 엔딩 기록
-  const candBest = { ...from, score: Math.round(num(score, -1)), statSum, persHistory };
+  const candBest = { ...from, score: Math.round(num(score, -1)), statSum, persHistory, choices };
+  const epi = str(e.epilogue).slice(0, EPILOGUE_MAX);
+  if (epi) candBest.epilogue = epi;
   const rec = meta.endings[e.id] ?? { name: run.endingName, cat: run.cat, hidden, count: 0, firstAt: at, lastAt: at, best: null, last: null, letters: [] };
   rec.name = run.endingName; rec.cat = run.cat; rec.hidden = hidden;
   rec.count += 1; rec.lastAt = at; rec.last = from;
   if (!rec.best || candBest.score > rec.best.score || (candBest.score === rec.best.score && candBest.statSum > rec.best.statSum)) rec.best = candBest;
   meta.endings[e.id] = rec;
 
-  // 후일담 편지: 이전에 달성한 모든 엔딩은 다음 편지 1통, 처음 달성한 엔딩은 1번 편지
+  // 후일담 편지 (저빈도): 처음 달성한 엔딩은 1번 편지. 그리고 이전에 달성한 엔딩들 중 편지가 남은 것의 '다음 편지'를
+  // 회차당 MAX_FOLLOWUP_LETTERS_PER_RUN통까지 — 이번에 다시 도달한 엔딩이 먼저, 나머지는 처음 달성한 순서대로.
+  // 편지 데이터가 아직 없는 엔딩은 자리만 기록해 둔다(나중에 데이터가 채워지면 보인다). 이것은 상한에 세지 않는다.
   const letterUnlocks = [];
   const unlockNext = (id) => {
     const r = meta.endings[id];
-    if (r.letters.length >= letterCap(id, r.cat, src)) return;
+    if (r.letters.length >= letterCap(id, r.cat, src)) return false;
     const index = r.letters.length;
-    const sender = r.last ?? from;
+    // 보낸 아이 = 그 길에 가장 최근에 도달한 아이. 구버전 기록처럼 누군지 모르면 이번 아이가 아니라 '그 아이'로
+    const sender = r.last ?? (id === e.id ? from : { name: '그 아이', guardian: from.guardian, runNo: null, at: r.firstAt || '' });
     r.letters.push({ i: index, at, from: sender });
     const L = letterSource(id, r.cat, src)[index];
-    if (L) {
-      const call = GUARDIANS[sender.guardian]?.call;
-      letterUnlocks.push({ key: `${id}:${index}`, endingId: id, endingName: r.name, cat: r.cat, index, from: sender, title: fillName(resolveText(L.title, sender), sender.name, call) });
-    }
+    if (!L) return false;
+    const call = GUARDIANS[sender.guardian]?.call;
+    letterUnlocks.push({ key: `${id}:${index}`, endingId: id, endingName: r.name, cat: r.cat, index, from: sender, title: fillName(resolveText(L.title, sender), sender.name, call) });
+    return true;
   };
-  for (const id of prevAchieved) unlockNext(id);
+  let followups = 0;
+  const order = isNew ? prevAchieved : [e.id, ...prevAchieved.filter(id => id !== e.id)];
+  for (const id of order) {
+    if (followups >= MAX_FOLLOWUP_LETTERS_PER_RUN) break;
+    if (unlockNext(id)) followups++;
+  }
   if (isNew) unlockNext(e.id);
 
   // 새로 열린 것들
@@ -287,13 +334,17 @@ function keepsakeGrant(meta) {
   const last = meta.runs[meta.runs.length - 1];
   if (!last) return null;
   const stats = {};
-  for (const t of last.topStats.slice(0, 2)) stats[t.id] = KEEPSAKE_STAT_BONUS;
+  for (const t of last.topStats.slice(0, 2)) if (t.v > 0) stats[t.id] = KEEPSAKE_STAT_BONUS;
+  if (!Object.keys(stats).length) return null;
   return { grant: { stats, flags: { meta_keepsake: true } }, from: last };
 }
 function bonusDesc(b, meta) {
   if (b.dynamic === 'keepsake') {
     const k = keepsakeGrant(meta);
-    if (k) return `지난 아이 ${k.from.name}(${k.from.endingName})의 물건. 그 아이가 잘하던 ${describeStats(k.grant.stats)}`;
+    if (k) {
+      const nm = k.from.name;
+      return `${nm}(${k.from.endingName})${josa(nm, '이').slice(nm.length)} 두고 간 물건. 그 아이가 가장 잘하던 ${Object.keys(k.grant.stats).map(statName).join('·')} +${KEEPSAKE_STAT_BONUS}`;
+    }
   }
   return b.desc;
 }
@@ -308,7 +359,7 @@ export function startOptions(meta0) {
   const bonuses = START_BONUSES.map(b => {
     const owned = meta.owned.includes(b.id), available = bonusAvailable(b, meta);
     return { id: b.id, name: b.name, desc: bonusDesc(b, meta), cost: b.cost, owned, available, affordable: meta.shards >= b.cost,
-      requirement: b.requires?.runs ? `아이를 ${b.requires.runs}명 이상 떠나보낸 뒤` : null };
+      requirement: b.requires?.runs ? (b.requires.runs === 1 ? '첫 아이를 떠나보낸 뒤에' : `아이 ${b.requires.runs}명을 떠나보낸 뒤에`) : null };
   });
   const next = guardians.filter(g => !g.unlocked).sort((a, b) => a.need - b.need)[0] ?? null;
   return { guardians, bonuses, shards: meta.shards, shardsEarned: meta.shardsEarned, maxActive: MAX_ACTIVE_BONUSES,
@@ -318,11 +369,11 @@ export function startOptions(meta0) {
 // → { meta, ok, reason? }
 export function buyBonus(meta0, id) {
   const meta = migrateMeta(clone(meta0 ?? {}));
-  const b = BONUS_MAP[id];
-  if (!b) return { meta, ok: false, reason: '없는 보너스입니다.' };
-  if (meta.owned.includes(id)) return { meta, ok: false, reason: '이미 가지고 있습니다.' };
-  if (!bonusAvailable(b, meta)) return { meta, ok: false, reason: '아직 살 수 없습니다.' };
-  if (meta.shards < b.cost) return { meta, ok: false, reason: `별 조각이 ${b.cost - meta.shards}개 모자랍니다.` };
+  const b = bonusOf(id);
+  if (!b) return { meta, ok: false, reason: '없는 보너스다.' };
+  if (meta.owned.includes(id)) return { meta, ok: false, reason: '이미 가지고 있다.' };
+  if (!bonusAvailable(b, meta)) return { meta, ok: false, reason: '아직 열리지 않았다.' };
+  if (meta.shards < b.cost) return { meta, ok: false, reason: `별 조각이 ${b.cost - meta.shards}개 모자란다.` };
   meta.shards -= b.cost;
   meta.owned.push(id);
   return { meta, ok: true };
@@ -336,10 +387,10 @@ export function legacyOf(meta0, max = MAX_LEGACY) {
 // → engine.newGame에 그대로 펼쳐 넣을 수 있는 { guardian, bonuses, legacy, playthrough } (+ bonusIds: 실제 적용된 보너스)
 export function newGameOptions(meta0, { guardian = 'knight', bonusIds = [] } = {}) {
   const meta = migrateMeta(meta0);
-  const g = GUARDIANS[guardian] && meta.shardsEarned >= guardianNeed(guardian) ? guardian : 'knight';
+  const g = guardianOk(guardian) && meta.shardsEarned >= guardianNeed(guardian) ? guardian : 'knight';
   const applied = [];
   for (const id of Array.isArray(bonusIds) ? bonusIds : []) {
-    const b = BONUS_MAP[id];
+    const b = bonusOf(id);
     if (!b || applied.includes(id) || !meta.owned.includes(id) || !bonusAvailable(b, meta) || !grantOf(b, meta)) continue;
     if (applied.length >= MAX_ACTIVE_BONUSES) break;
     applied.push(id);
@@ -364,7 +415,30 @@ function statHint(def) {
   const pers = Object.entries(def.pers || {}).sort((a, b) => Math.abs(b[1]) - Math.abs(a[1]))[0];
   let pole = '';
   if (pers && Math.abs(pers[1]) >= 0.2) { const p = PERSONALITY.find(x => x.id === pers[0]); if (p) pole = pers[1] > 0 ? p.pos : p.neg; }
-  return `${top.join('·')}${top.length ? '이 빛나는 아이' : '어떤 아이'}${pole ? ` · ${pole}` : ''}`;
+  const lead = top.length ? `${top.slice(0, -1).map(t => `${t}·`).join('')}${josa(top[top.length - 1], '이')} 빛나는 아이` : '어떤 아이';
+  return `${lead}${pole ? ` · ${pole}` : ''}`;
+}
+// 이 엔딩이 반기는 성격 방향 (엔딩 정의의 pers 계수, |계수| ≥ 0.2인 축 중 큰 순서로 최대 2개) → [{ id, sign, pole }]
+export function endingFavor(def) {
+  return Object.entries(isObj(def?.pers) ? def.pers : {})
+    .filter(([k, v]) => PERS_IDS.includes(k) && Math.abs(num(v)) >= 0.2)
+    .sort((a, b) => Math.abs(b[1]) - Math.abs(a[1])).slice(0, 2)
+    .map(([k, v]) => { const p = PERSONALITY.find(x => x.id === k); return { id: k, sign: v > 0 ? 1 : -1, pole: v > 0 ? p.pos : p.neg }; });
+}
+// 앨범에 보일 에필로그: 문자열 정의는 지금의 문장으로 다시 채우고(내용 수정 반영),
+// 함수형 정의(그 회차의 상태가 필요한 것)는 기록해 둔 실제 문장을, 그것도 없으면 이름·출신만으로 만들어 본다.
+function albumEpilogue(def, b) {
+  if (!b) return null;
+  const call = GUARDIANS[b.guardian]?.call;
+  if (typeof def?.epilogue === 'string') return fillName(def.epilogue, b.name, call);
+  if (b.epilogue) return b.epilogue;
+  if (typeof def?.epilogue === 'function') {
+    try {
+      const t = def.epilogue({ name: b.name, guardian: b.guardian, legacy: [], flags: {}, stats: {}, personality: {}, relations: {}, counters: {} });
+      return typeof t === 'string' && t ? fillName(t, b.name, call) : null;
+    } catch { return null; }
+  }
+  return null;
 }
 function hiddenHint(def) { return typeof def.hint === 'string' && def.hint ? def.hint : HIDDEN_HINTS[def.id] ?? GENERIC_HIDDEN_HINT; }
 
@@ -387,21 +461,21 @@ export function endingAlbum(meta0, endings = ENDINGS, opts = {}) {
   const known = new Set();
   const entries = (endings || []).map(def => {
     known.add(def.id);
-    const rec = meta.endings[def.id];
+    const rec = own(meta.endings, def.id) ? meta.endings[def.id] : null;
     const achieved = !!rec, hidden = !!def.hidden, secret = hidden && !achieved;
     const base = { id: def.id, cat: def.cat, hidden, achieved, secret, name: secret ? '???' : def.name };
-    if (!achieved) return { ...base, count: 0, firstAt: null, lastAt: null, best: null, letters: [], lettersUnlocked: 0, lettersTotal: letterSource(def.id, def.cat, src).length, epilogue: null, hint: secret ? hiddenHint(def) : statHint(def) };
+    if (!achieved) return { ...base, count: 0, firstAt: null, lastAt: null, best: null, letters: [], lettersUnlocked: 0, lettersTotal: letterSource(def.id, def.cat, src).length, epilogue: null, favor: [], hint: secret ? hiddenHint(def) : statHint(def) };
     const b = rec.best ?? rec.last;
-    const call = GUARDIANS[b?.guardian]?.call;
     return { ...base, count: rec.count, firstAt: rec.firstAt, lastAt: rec.lastAt, best: rec.best, last: rec.last,
       letters: lettersOf(meta, def.id, rec, src), lettersUnlocked: rec.letters.length, lettersTotal: letterSource(def.id, def.cat, src).length,
-      epilogue: typeof def.epilogue === 'string' && b ? fillName(def.epilogue, b.name, call) : null, hint: null };
+      epilogue: albumEpilogue(def, b), favor: endingFavor(def), hint: null };
   });
   // 데이터에서 사라진 엔딩의 기록도 버리지 않는다
   for (const [id, rec] of Object.entries(meta.endings)) {
     if (known.has(id)) continue;
     entries.push({ id, cat: rec.cat || '기타', hidden: rec.hidden, achieved: true, secret: false, name: rec.name, count: rec.count, firstAt: rec.firstAt, lastAt: rec.lastAt,
-      best: rec.best, last: rec.last, letters: lettersOf(meta, id, rec, src), lettersUnlocked: rec.letters.length, lettersTotal: letterSource(id, rec.cat, src).length, epilogue: null, hint: null, orphan: true });
+      best: rec.best, last: rec.last, letters: lettersOf(meta, id, rec, src), lettersUnlocked: rec.letters.length, lettersTotal: letterSource(id, rec.cat, src).length,
+      epilogue: rec.best?.epilogue ?? null, favor: [], hint: null, orphan: true });
   }
   return entries;
 }

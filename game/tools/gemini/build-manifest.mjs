@@ -10,7 +10,7 @@
 // 프롬프트를 손보려면 tools/gemini/style.mjs(공통) 또는 tools/gemini/prompt-overrides.json(개별)을 고친다.
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
-import { BG, NPC, UI, STAGES, STAGE_AGE, CATS, CHAR_KEYS, sizeOf } from '../../js/data/images.js';
+import { BG, NPC, UI, STAGES, STAGE_AGE, CATS, CHAR_KEYS, SIZES, sizeOf } from '../../js/data/images.js';
 import { ENDINGS } from '../../js/data/endings.js';
 import { fillName } from '../../js/engine/josa.js';
 import * as K from './style.mjs';
@@ -58,7 +58,7 @@ function refSheet() {
     'No text, no name labels, no age numbers, no measurement lines.',
     fmt(...REF_SIZE));
   return entry(REF_SHEET, 'ref', '루나 캐릭터 시트 (10·12·14·16·18세)', prompt,
-    neg(K.NEG_BASE, K.NEG_MODEST, K.NEG_MINOR, K.NEG_LUNA, 'different outfits per age, different faces per age, height chart, model sheet annotations'));
+    neg(K.NEG_BASE, K.NEG_MODEST, K.NEG_TEEN_OLDER, 'the 10-, 12- and 14-year-olds drawn with teenage or adult proportions', K.NEG_LUNA, 'different outfits per age, different faces per age, height chart, model sheet annotations'));
 }
 
 // ── 2. 공주 초상 char/{stage}_{cat} (20장) ─────────────────────────────────
@@ -78,7 +78,7 @@ function charEntry(key) {
     'Composition: one single character, knee-up shot (head to knees), centered, slight three-quarter angle toward the viewer, whole head visible with a little headroom. Plain flat light-grey to white background, no scenery.',
     fmt(...sizeOf(key)));
   return entry(key, 'char', `루나 ${info.ko} · ${c.ko}`, prompt,
-    neg(K.NEG_BASE, K.NEG_MODEST, K.NEG_MINOR, K.NEG_LUNA, K.NEG_DUPLICATE, K.NEG_VIOLENCE, 'busy background, scenery'),
+    neg(K.NEG_BASE, K.NEG_MODEST, K.negForAge(info.age), K.NEG_LUNA, K.NEG_DUPLICATE, K.NEG_VIOLENCE, 'busy background, scenery'),
     [REF_SHEET], { [REF_SHEET]: SHEET_NOTE_TEEN }, { stage: st, age: info.age, cat });
 }
 
@@ -108,7 +108,7 @@ function bgEntry(key, desc) {
     room ? 'This is the SAME living room as the attached image: keep the room layout, furniture, window and fireplace positions identical; change only the season, light and small seasonal props.' : '',
     fmt(...sizeOf(key)));
   return entry(key, 'bg', desc.split('.')[0].trim(), prompt,
-    neg(K.NEG_BASE, K.NEG_BG, noPeople ? 'people, characters, animals in focus' : '', K.NEG_VIOLENCE),
+    neg(K.NEG_BASE, K.NEG_BG, noPeople ? 'people, characters, animals in focus' : '', K.NEG_MODEST, K.NEG_VIOLENCE),
     room ? ['bg/room_spring'] : [], room ? { 'bg/room_spring': 'the same living room in spring — keep the layout and furniture identical' } : {});
 }
 
@@ -118,29 +118,53 @@ function endingNpcs(e, epi) {
   const ids = fixed ?? Object.entries(K.NPC_NAME_PATTERNS).filter(([, re]) => re.test(epi)).map(([id]) => id);
   return ids.filter(id => NPC[`npc/${id}`]);
 }
+// 에필로그 텍스트. 함수형 에필로그(출신·이전 회차에 따라 달라짐)는 소스 코드가 프롬프트에 새지 않도록
+// style.mjs 의 summary 를 쓰고, 없으면 중립 상태로 한 번 불러 본 예시 문장을 쓴다.
+const NEUTRAL_STATE = { name: '{name}', guardian: null, legacy: [], stats: {}, flags: {}, rel: {} };
+export function endingEpilogue(e) {
+  if (typeof e.epilogue === 'string') return { text: fillName(e.epilogue, NAME, CALL), varies: false };
+  const summary = K.ENDING_SCENES[e.id]?.summary;
+  if (summary) return { text: summary, varies: true, summary: true };
+  if (typeof e.epilogue === 'function') {
+    try { const t = e.epilogue(NEUTRAL_STATE); if (typeof t === 'string' && t.trim()) return { text: fillName(t, NAME, CALL), varies: true }; } catch { /* fall through */ }
+  }
+  return { text: '', varies: true };
+}
 export function endingEntry(e) {
   const key = `ending/${e.id}`;
-  const epi = fillName(e.epilogue, NAME, CALL);
+  const ep = endingEpilogue(e);
+  const epi = ep.text;
   const cs = K.ENDING_CAT_STYLE[e.cat] ?? { accent: 'gold', setting: 'the kingdom of Celestia' };
   const scene = K.ENDING_SCENES[e.id]?.scene
-    ?? `Illustrate the single most memorable moment of the epilogue above, ten years after the story: Luna has become «${e.name}». Setting: ${cs.setting}`;
+    ?? `Illustrate the single most memorable moment of the epilogue above for the ending «${e.name}», ten years after the story. Setting: ${cs.setting}`;
   const npcs = endingNpcs(e, epi);
+  const npcLook = (id) => K.ENDING_SCENES[e.id]?.npcNotes?.[id] ?? K.NPC_IN_ENDING[id] ?? id;
+  const epiLine = !epi ? ''
+    : ep.summary ? `Epilogue summary (에필로그 요약 — 플레이마다 문장이 달라짐): ${epi}`
+    : ep.varies ? `Epilogue (에필로그 예시 — 플레이마다 일부가 달라짐): «${epi}»`
+    : `Epilogue (에필로그 원문 — 이 장면의 바탕): «${epi}»`;
+  const tag = e.cat === '히든' || !e.hidden ? e.cat : `${e.cat}, 히든`;
   const prompt = join2(K.STYLE_ANCHOR, '', K.LUNA_BIBLE, '',
-    `[THIS IMAGE — ${key} · 엔딩 일러스트 «${e.name}» (${e.cat}${e.hidden ? ', 히든' : ''})]`,
-    `Epilogue (에필로그 원문 — 이 장면의 바탕): «${epi}»`,
+    `[THIS IMAGE — ${key} · 엔딩 일러스트 «${e.name}» (${tag})]`,
+    epiLine,
     `Scene: ${scene}.`,
     K.LUNA_ADULT,
     `Costume accent for this ending: ${cs.accent}, on a black-and-white base.`,
-    npcs.length ? `Also in the scene: ${npcs.map(id => K.NPC_IN_ENDING[id] ?? id).join('; ')} — match the attached reference portrait(s), aged as described.` : '',
+    npcs.length ? `Also in the scene: ${npcs.map(npcLook).join('; ')} — match the attached reference portrait(s), aged as described.` : '',
     K.GUARDIAN_RULE,
     'Composition: cinematic key illustration for the ending screen; Luna is the clear main subject (not tiny), emotional moment, detailed background.',
     fmt(...sizeOf(key)));
   const refs = [REF_SHEET, ...npcs.map(id => `npc/${id}`)];
   const refNotes = { [REF_SHEET]: SHEET_NOTE_ADULT };
-  for (const id of npcs) refNotes[`npc/${id}`] = `reference portrait of ${K.NPC_IN_ENDING[id]?.split(',')[0] ?? id} — keep the character design; age as described`;
+  for (const id of npcs) {
+    const who = (K.NPC_IN_ENDING[id] ?? id).split(',')[0];
+    refNotes[`npc/${id}`] = K.ENDING_SCENES[e.id]?.npcNotes?.[id]
+      ? `reference portrait of ${who} — keep its design cues, but draw it as described for this scene`
+      : `reference portrait of ${who} — keep the character design; age as described`;
+  }
   return entry(key, 'ending', `엔딩 «${e.name}»`, prompt,
     neg(K.NEG_BASE, K.NEG_MODEST, K.NEG_VIOLENCE, K.NEG_LUNA, 'Luna drawn as a child or young teenager (she is an adult here), the guardian\'s face, romantic contact between Luna and the guardian'),
-    refs, refNotes, { ending: { id: e.id, name: e.name, cat: e.cat, hidden: !!e.hidden }, age: K.ENDING_AGE, npcs });
+    refs, refNotes, { ending: { id: e.id, name: e.name, cat: e.cat, hidden: !!e.hidden, ...(ep.varies ? { epilogueVaries: true } : {}) }, age: K.ENDING_AGE, npcs });
 }
 
 // ── 6. UI ───────────────────────────────────────────────────────────────────
@@ -179,7 +203,10 @@ export function buildManifest({ warn = (m) => console.warn('경고:', m) } = {})
   for (const k of CHAR_KEYS) entries.push(charEntry(k));
   for (const [k, d] of Object.entries(NPC)) entries.push(npcEntry(k, d));
   for (const [k, d] of Object.entries(BG)) entries.push(bgEntry(k, d));
-  for (const e of ENDINGS) entries.push(endingEntry(e));
+  for (const e of ENDINGS) {
+    if (!K.ENDING_SCENES[e.id]) warn(`엔딩 "${e.id}"(${e.name})에 style.mjs ENDING_SCENES 연출이 없어 에필로그 + 범주 기본 배경으로 프롬프트를 만듭니다. 장면을 직접 적으면 더 좋습니다.`);
+    entries.push(endingEntry(e));
+  }
   for (const [k, d] of Object.entries(UI)) entries.push(uiEntry(k, d));
   applyOverrides(entries, warn);
   entries.forEach((e, i) => { e.order = i + 1; });
@@ -208,6 +235,13 @@ export function checkManifest(m) {
   const pos = new Map(keys.map((k, i) => [k, i]));
   for (const e of m.entries) {
     if (!e.width || !e.height) errors.push(`크기 없음: ${e.key}`);
+    const want = e.group === 'ref' ? REF_SIZE : SIZES[e.group];
+    if (want && (e.width !== want[0] || e.height !== want[1])) errors.push(`크기 불일치: ${e.key} ${e.width}×${e.height} ≠ images.js SIZES ${want[0]}×${want[1]}`);
+    if (e.path !== `assets/${e.key}.png`) errors.push(`경로 불일치: ${e.key} → ${e.path}`);
+    // 함수형 에필로그 등 JS 소스가 프롬프트로 새면 안 된다
+    if (/=>|\bfunction\s*\w*\s*\(|\$\{/.test(e.prompt)) errors.push(`프롬프트에 코드 조각: ${e.key}`);
+    if (/\{(name|call)[^}]*\}/.test(e.prompt)) errors.push(`프롬프트에 치환 안 된 토큰: ${e.key}`);
+    if (!/revealing/.test(e.negative)) errors.push(`단정함 금지 목록 없음: ${e.key}`);
     if (!e.prompt?.includes('[STYLE ANCHOR')) errors.push(`스타일 앵커 없음: ${e.key}`);
     if ((e.group === 'char' || e.group === 'ending') && !e.prompt.includes('[CHARACTER — 루나')) errors.push(`캐릭터 바이블 없음: ${e.key}`);
     if (e.group === 'char' && !e.refs.includes(REF_SHEET)) errors.push(`캐릭터 시트 참조 없음: ${e.key}`);
@@ -221,22 +255,26 @@ export function checkManifest(m) {
 
 const stable = (m) => JSON.stringify(m, null, 2) + '\n';
 
-if (isMain(import.meta.url)) {
+function main() {
   const args = parseArgs();
   const m = buildManifest();
   const { errors } = checkManifest(m);
-  if (errors.length) { console.error('매니페스트 검사 실패:\n- ' + errors.join('\n- ')); process.exit(1); }
+  if (errors.length) { console.error('매니페스트 검사 실패:\n- ' + errors.join('\n- ')); return 1; }
   const text = stable(m);
   const summary = Object.entries(m.counts).map(([k, v]) => `${k} ${v}`).join(' · ');
-  if (args.stdout) { process.stdout.write(text); process.exit(0); }
+  // 파이프로 보낼 때 process.exit() 를 바로 부르면 출력이 잘리므로 exitCode 만 정한다.
+  if (args.stdout) { process.stdout.write(text); return 0; }
   const out = args.out ? userPath(args.out) : MANIFEST_PATH;
   if (args.check) {
     const cur = existsSync(out) ? readFileSync(out, 'utf8') : '';
-    if (cur !== text) { console.error(`매니페스트가 최신이 아닙니다: ${out}\n다시 생성: node tools/gemini/build-manifest.mjs`); process.exit(1); }
+    if (cur !== text) { console.error(`매니페스트가 최신이 아닙니다: ${out}\n다시 생성: node tools/gemini/build-manifest.mjs`); return 1; }
     console.log(`매니페스트 최신 (${summary})`);
-    process.exit(0);
+    return 0;
   }
   mkdirSync(dirname(out), { recursive: true });
   writeFileSync(out, text);
   console.log(`매니페스트 작성: ${out}\n  ${summary}\n  엔딩 ${m.entries.filter(e => e.group === 'ending').length}종 (NPC 참조 포함 ${m.entries.filter(e => e.group === 'ending' && e.refs.length > 1).length}종) · 검사 통과`);
+  return 0;
 }
+
+if (isMain(import.meta.url)) process.exitCode = main();

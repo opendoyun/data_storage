@@ -10,7 +10,11 @@
 //   GET  /v1beta/models                       모델 목록 (한 페이지 3개 → nextPageToken 으로 페이지 넘김 시험)
 //   POST /v1beta/models/<id>:generateContent  imageConfig.aspectRatio 에 맞는 작은 이미지 (16:9 는 JPEG, 나머지 PNG)
 //   GET  /__mock/requests                     받은 generateContent 요청 요약 (테스트 검증용)
-//   프롬프트에 [[mock:no-image]] → 이미지 없이 finishReason IMAGE_SAFETY, [[mock:500]] → 항상 500
+//   요청 본문은 실제 API처럼 엄격히 검사한다: 모르는 필드·잘못된 aspectRatio·mimeType/data 없는 inlineData·
+//   이미지로 디코드되지 않는 base64 → 400 INVALID_ARGUMENT. 키는 x-goog-api-key 헤더로 왔는지 기록(keyVia).
+//   프롬프트에 [[mock:no-image]] → 이미지 없이 finishReason IMAGE_SAFETY, [[mock:500]] → 항상 500,
+//   [[mock:blocked]] → promptFeedback.blockReason=SAFETY (후보 없음), [[mock:quota0]] → 429 "limit: 0" (무료 등급 한도 0),
+//   [[mock:thought]] → thought:true 중간 이미지(더 큼, 200×200)를 먼저, 최종 이미지를 나중에 돌려줌
 //   --reject-image-only : responseModalities 가 ['IMAGE'] 단독이면 400 (TEXT,IMAGE 폴백 시험)
 //   --reject-aspect     : imageConfig 가 있으면 400 (비율 없는 요청 폴백 시험)
 //   --flaky=N           : N번째 요청마다 429(RetryInfo 50ms) / 503 을 번갈아 반환 (재시도 시험)
@@ -53,6 +57,43 @@ function imageFor(aspect) {
   return { mimeType: 'image/png', data: makePng(w, h).toString('base64'), w, h };
 }
 
+const API_ASPECTS = new Set(['1:1', '2:3', '3:2', '3:4', '4:3', '4:5', '5:4', '9:16', '16:9', '21:9']);
+const sniff = (b) => b.length > 8 && b.readUInt32BE(0) === 0x89504e47 ? 'image/png' : b.length > 3 && b[0] === 0xff && b[1] === 0xd8 ? 'image/jpeg'
+  : b.length > 12 && b.toString('ascii', 0, 4) === 'RIFF' && b.toString('ascii', 8, 12) === 'WEBP' ? 'image/webp' : null;
+// 실제 generateContent 가 거부하는 모양을 흉내 낸다. 문제 없으면 null.
+function validateBody(j) {
+  const unknown = (obj, allowed, where) => Object.keys(obj ?? {}).find(k => !allowed.includes(k)) && `Invalid JSON payload received. Unknown name "${Object.keys(obj).find(k => !allowed.includes(k))}" at '${where}': Cannot find field.`;
+  let e = unknown(j, ['contents', 'generationConfig', 'safetySettings', 'systemInstruction', 'tools', 'toolConfig', 'cachedContent'], '');
+  if (e) return e;
+  if (!Array.isArray(j.contents) || !j.contents.length) return '* GenerateContentRequest.contents: contents is not specified';
+  for (const [ci, c] of j.contents.entries()) {
+    if ((e = unknown(c, ['role', 'parts'], `contents[${ci}]`))) return e;
+    if (c.role && !['user', 'model'].includes(c.role)) return `Please use a valid role: user, model.`;
+    if (!Array.isArray(c.parts) || !c.parts.length) return `* GenerateContentRequest.contents[${ci}].parts: contents.parts must not be empty.`;
+    for (const [pi, p] of c.parts.entries()) {
+      if ((e = unknown(p, ['text', 'inlineData', 'fileData', 'thought', 'thoughtSignature'], `contents[${ci}].parts[${pi}]`))) return e;
+      const kinds = ['text', 'inlineData', 'fileData'].filter(k => k in p);
+      if (kinds.length !== 1) return `* GenerateContentRequest.contents[${ci}].parts[${pi}].data: required oneof field 'data' must have one initialized field`;
+      if (p.inlineData) {
+        if ((e = unknown(p.inlineData, ['mimeType', 'data'], `contents[${ci}].parts[${pi}].inline_data`))) return e;
+        if (!p.inlineData.mimeType || !p.inlineData.data) return `* GenerateContentRequest.contents[${ci}].parts[${pi}].inline_data: mime_type and data are required`;
+        const buf = Buffer.from(p.inlineData.data, 'base64');
+        const real = sniff(buf);
+        if (!real || buf.toString('base64').replace(/=+$/, '') !== p.inlineData.data.replace(/=+$/, '')) return `Unable to process input image. Please retry or report in https://developers.generativeai.google/guide/troubleshooting`;
+        if (real !== p.inlineData.mimeType) return `Provided image is not valid (mime_type ${p.inlineData.mimeType} does not match data ${real}).`;
+      }
+    }
+  }
+  const g = j.generationConfig ?? {};
+  if ((e = unknown(g, ['responseModalities', 'imageConfig', 'temperature', 'topP', 'topK', 'candidateCount', 'seed', 'thinkingConfig'], 'generation_config'))) return e;
+  for (const m of g.responseModalities ?? []) if (!['TEXT', 'IMAGE', 'AUDIO'].includes(m)) return `Invalid value at 'generation_config.response_modalities' (${m})`;
+  if (g.imageConfig) {
+    if ((e = unknown(g.imageConfig, ['aspectRatio', 'imageSize'], 'generation_config.image_config'))) return e;
+    if (g.imageConfig.aspectRatio && !API_ASPECTS.has(g.imageConfig.aspectRatio)) return `Invalid aspect ratio: ${g.imageConfig.aspectRatio}`;
+  }
+  return null;
+}
+
 const requests = [];
 let genCount = 0;
 const send = (res, status, obj, headers = {}) => { res.writeHead(status, { 'content-type': 'application/json', ...headers }); res.end(JSON.stringify(obj)); };
@@ -64,6 +105,7 @@ const server = createServer((req, res) => {
   req.on('data', d => { body += d; });
   req.on('end', () => {
     if (url.pathname === '/__mock/requests') return send(res, 200, requests);
+    const keyVia = req.headers['x-goog-api-key'] ? 'header' : url.searchParams.get('key') ? 'query' : null;
     const key = req.headers['x-goog-api-key'] || url.searchParams.get('key');
     if (!key) return gErr(res, 403, 'PERMISSION_DENIED', 'Method doesn\'t allow unregistered callers (callers without established identity). Please use API Key or other form of API consumer identity to call this API.');
     if (args['require-key'] && key !== args['require-key']) return gErr(res, 400, 'INVALID_ARGUMENT', 'API key not valid. Please pass a valid API key.');
@@ -77,16 +119,20 @@ const server = createServer((req, res) => {
     if (req.method === 'POST' && m) {
       const model = decodeURIComponent(m[1]);
       if (!MODEL_IDS.has(model)) return gErr(res, 404, 'NOT_FOUND', `models/${model} is not found for API version v1beta, or is not supported for generateContent.`);
-      let j; try { j = JSON.parse(body); } catch { return gErr(res, 400, 'INVALID_ARGUMENT', 'Invalid JSON payload received.'); }
+      let j; try { j = JSON.parse(body); } catch { requests.push({ n: requests.length + 1, model, status: 400, invalid: 'json' }); return gErr(res, 400, 'INVALID_ARGUMENT', 'Invalid JSON payload received.'); }
+      const invalid = validateBody(j);
       const parts = j.contents?.[0]?.parts ?? [];
       const text = parts.filter(p => p.text).map(p => p.text).join('\n');
       const inline = parts.filter(p => p.inlineData);
       const mods = j.generationConfig?.responseModalities ?? [];
       const aspect = j.generationConfig?.imageConfig?.aspectRatio ?? null;
       const key0 = /\[THIS IMAGE — ([^\s·\]]+)/.exec(text)?.[1] ?? null;
-      const rec = { n: requests.length + 1, model, key: key0, modalities: mods, aspect, inline: inline.length, inlineMimes: inline.map(p => p.inlineData.mimeType), textChars: text.length, status: 200 };
+      const rec = { n: requests.length + 1, model, key: key0, keyVia, modalities: mods, aspect, inline: inline.length, inlineMimes: inline.map(p => p.inlineData?.mimeType), textChars: text.length, status: 200 };
       requests.push(rec);
       const fail = (status, st, msg, details) => { rec.status = status; return gErr(res, status, st, msg, details); };
+      if (invalid) { rec.invalid = invalid; return fail(400, 'INVALID_ARGUMENT', invalid); }
+      if (text.includes('[[mock:blocked]]')) { rec.status = 'blocked'; return send(res, 200, { promptFeedback: { blockReason: 'SAFETY' }, modelVersion: model }); }
+      if (text.includes('[[mock:quota0]]')) return fail(429, 'RESOURCE_EXHAUSTED', `You exceeded your current quota, please check your plan and billing details. * Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 0, model: ${model}`, [{ '@type': 'type.googleapis.com/google.rpc.RetryInfo', retryDelay: '0.05s' }]);
       if (args['reject-image-only'] && mods.length === 1 && mods[0] === 'IMAGE') return fail(400, 'INVALID_ARGUMENT', 'Model does not support the requested response modalities: image');
       if (args['reject-aspect'] && aspect) return fail(400, 'INVALID_ARGUMENT', 'Invalid JSON payload received. Unknown name "imageConfig" at \'generation_config\': Cannot find field.');
       if (!mods.includes('IMAGE')) return fail(400, 'INVALID_ARGUMENT', 'responseModalities must include IMAGE for this model');
@@ -103,6 +149,11 @@ const server = createServer((req, res) => {
       const img = imageFor(aspect);
       rec.returned = `${img.w}x${img.h} ${img.mimeType}`;
       const out = [{ inlineData: { mimeType: img.mimeType, data: img.data } }];
+      if (text.includes('[[mock:thought]]')) {
+        out.unshift({ inlineData: { mimeType: 'image/png', data: makePng(200, 200).toString('base64') }, thought: true });
+        out.unshift({ text: 'Planning the composition…', thought: true });
+        rec.returned += ' (+thought 200x200)';
+      }
       if (mods.includes('TEXT')) out.unshift({ text: 'Here is the illustration.' });
       return send(res, 200, { candidates: [{ content: { role: 'model', parts: out }, finishReason: 'STOP', index: 0 }], usageMetadata: { promptTokenCount: Math.ceil(text.length / 4) + inline.length * 258, candidatesTokenCount: 1290 }, modelVersion: model });
     }

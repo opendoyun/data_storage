@@ -1,0 +1,246 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>미니게임 실험실</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ctext y='26' font-size='26'%3E%E2%AD%90%3C/text%3E%3C/svg%3E">
+<link rel="stylesheet" href="../css/style.css">
+<link rel="stylesheet" href="../css/minigames.css">
+<style>
+  .lab{max-width:1080px;margin:0 auto;padding:16px}
+  .lab h1{font-size:20px;margin:4px 0 2px}.lab h1 span{color:var(--gold);font-size:13px;margin-left:6px}
+  .lab .panel{margin-top:14px}
+  .lab .row{display:flex;flex-wrap:wrap;gap:10px 16px;align-items:center}
+  .lab label{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--muted);min-width:0}
+  .lab label.grow{flex:1 1 220px}
+  .lab input[type=range]{width:100%;accent-color:var(--gold)}
+  .lab .num{display:flex;gap:6px;align-items:center}.lab .num input[type=number]{width:84px}
+  .lab .adv{font-size:13px;color:var(--ink)}.lab .adv b{color:var(--gold);font-variant-numeric:tabular-nums}
+  .lab .presets{display:flex;gap:6px;flex-wrap:wrap}
+  .lab .games{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:10px}
+  .lab .game{background:#15102a;border:1px solid var(--line);border-radius:14px;padding:12px;display:flex;flex-direction:column;gap:6px}
+  .lab .game h3{margin:0;font-size:17px;display:flex;justify-content:space-between;align-items:baseline}
+  .lab .game h3 small{font-size:11px;color:var(--muted);font-weight:400}
+  .lab .game p{margin:0;font-size:13px;color:var(--muted);flex:1}
+  .lab .game .stat{font-size:11px;color:var(--gold)}
+  .lab table{width:100%;border-collapse:collapse;font-size:13px}
+  .lab th,.lab td{text-align:left;padding:6px 8px;border-bottom:1px dashed var(--line);white-space:nowrap}
+  .lab th{color:var(--muted);font-weight:500;font-size:12px}
+  .lab td.ok{color:var(--ok)}.lab td.no{color:var(--danger)}.lab td.skip{color:var(--muted)}
+  .lab .stars{color:var(--gold);letter-spacing:1px}
+  .lab .tablewrap{overflow-x:auto}
+  .lab code{font-size:12px;word-break:break-all}
+  .lab .princesses{display:flex;gap:10px;flex-wrap:wrap;margin-top:8px}
+  .lab .princesses figure{margin:0;width:96px;text-align:center;font-size:11px;color:var(--muted)}
+  .lab .princesses .pic{height:112px;border-radius:12px;border:1px solid var(--line);background:radial-gradient(circle at 50% 38%,#3d2f6a,#1a1230 70%);overflow:hidden}
+  @media(max-width:480px){.lab{padding:10px}.lab .games{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="lab">
+  <h1>미니게임 실험실 <span>GDD 4.7</span></h1>
+  <div class="hint">판정 상황을 정해 네 가지 미니게임을 띄워 보는 개발용 페이지. 결과 점수(0~1)는 엔진에서 주사위 ±60을 <code>(점수 − 0.5) × 120</code>으로 대체한다.
+    주소 뒤에 <code>?kind=exam|ball|cooking|adventure&amp;value=300&amp;dc=220&amp;rm=1&amp;seed=7</code>를 붙이면 바로 시작한다.</div>
+
+  <div class="panel">
+    <h2>판정 상황</h2>
+    <div class="row">
+      <label>아이 이름<input id="f-name" value="루나" maxlength="12"></label>
+      <label class="grow">이벤트 제목<input id="f-title" value="폐허의 문"></label>
+      <label>능력치<select id="f-stat"></select></label>
+    </div>
+    <div class="row" style="margin-top:10px">
+      <label class="grow">능력치 값 <span class="num"><input type="range" id="f-value" min="0" max="999" value="230"><input type="number" id="f-value-n" min="0" max="999" value="230"></span></label>
+      <label class="grow">목표(DC) <span class="num"><input type="range" id="f-dc" min="0" max="999" value="220"><input type="number" id="f-dc-n" min="0" max="999" value="220"></span></label>
+    </div>
+    <div class="row" style="margin-top:10px">
+      <div class="adv" id="adv"></div>
+      <div class="presets"><button data-preset="-1">불리 (−1)</button><button data-preset="0">보통 (0)</button><button data-preset="1">유리 (+1)</button></div>
+      <label>움직임 줄이기<select id="f-rm"><option value="auto">시스템 설정</option><option value="1">켬</option><option value="0">끔</option></select></label>
+      <label>시드<input id="f-seed" type="number" placeholder="무작위" style="width:96px"></label>
+    </div>
+  </div>
+
+  <div class="panel">
+    <h2>실행</h2>
+    <div class="games" id="games"></div>
+    <div class="actions"><button id="b-all">네 가지 연달아</button><span class="hint">Esc: 제목 카드에서는 건너뛰기, 플레이 중에는 일시정지</span></div>
+  </div>
+
+  <div class="panel">
+    <h2>결과 기록</h2>
+    <div class="tablewrap"><table><thead><tr><th>#</th><th>게임</th><th>유불리</th><th>점수</th><th>별</th><th>보정</th><th>예상 판정</th><th>걸린 시간</th></tr></thead><tbody id="log"></tbody></table></div>
+  </div>
+
+  <div class="panel">
+    <h2>점수 보정 (봇 시뮬레이션)</h2>
+    <div class="hint">순수 모델(<code>_internal</code>)에 봇을 돌린 평균 점수. 목표: 가만히·연타 ≈ 0~0.2, 보통 ≈ 0.5, 능숙 ≈ 0.85~1 (유불리 0 기준). 0.5가 주사위 평균과 같다.</div>
+    <div class="actions"><button id="b-calib">보정 표 계산 (칸마다 150판)</button><span class="hint" id="calib-msg"></span></div>
+    <div class="tablewrap"><table id="calib" hidden><thead><tr><th>게임</th><th>봇</th><th>불리 −1</th><th>−0.5</th><th>보통 0</th><th>+0.5</th><th>유리 +1</th></tr></thead><tbody></tbody></table></div>
+  </div>
+
+  <div class="panel">
+    <h2>공주 표정·의상 (character-design.md)</h2>
+    <div class="princesses" id="princesses"></div>
+  </div>
+</div>
+<script type="module">
+import { MINIGAME_INFO, playMinigame, advantageOf, starsOf, swingOf, princessSVG, _internal as MI } from '../js/ui/minigames.js';
+import { STATS } from '../js/data/stats.js';
+
+const $ = (s) => document.querySelector(s);
+const esc = (s) => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const DEFAULT_STAT = { exam: 'int', ball: 'eti', cooking: 'sens', adventure: 'str' };
+const lab = window.__lab = { results: [], running: false, last: undefined };
+
+$('#f-stat').innerHTML = STATS.map(s => `<option value="${s.id}">${s.name}</option>`).join('');
+$('#f-stat').value = 'int';
+// 슬라이더 ↔ 숫자 동기화
+for (const id of ['value', 'dc']) {
+  const r = $(`#f-${id}`), n = $(`#f-${id}-n`);
+  r.addEventListener('input', () => { n.value = r.value; showAdv(); });
+  n.addEventListener('input', () => { r.value = n.value; showAdv(); });
+}
+function showAdv() {
+  const a = advantageOf({ value: +$('#f-value').value, dc: +$('#f-dc').value });
+  const tag = a >= 0.34 ? '유리' : a > 0.08 ? '조금 유리' : a <= -0.34 ? '불리' : a < -0.08 ? '조금 불리' : '보통';
+  $('#adv').innerHTML = `advantage <b>${a >= 0 ? '+' : ''}${a.toFixed(2)}</b> · ${tag}`;
+}
+document.querySelectorAll('[data-preset]').forEach(b => b.onclick = () => {
+  const dc = +$('#f-dc').value, v = Math.max(0, Math.min(999, dc + (+b.dataset.preset) * 150));
+  $('#f-value').value = $('#f-value-n').value = v; showAdv();
+});
+showAdv();
+
+$('#games').innerHTML = Object.entries(MINIGAME_INFO).map(([k, g]) => `<div class="game">
+  <h3>${esc(g.name)} <small>${esc(g.genre || '')}</small></h3>
+  <div class="stat">${esc(g.stats || '')} · ${esc(g.secs || '')}</div>
+  <p>${esc(g.desc)}</p>
+  <button class="primary" data-kind="${k}">${esc(g.name)} 시작</button></div>`).join('');
+
+function ctxFor(kind, over = {}) {
+  const rmSel = $('#f-rm').value, seedV = $('#f-seed').value;
+  const stat = over.stat || (kind && $('#f-stat').dataset.touched ? $('#f-stat').value : DEFAULT_STAT[kind] || $('#f-stat').value);
+  const ctx = {
+    childName: $('#f-name').value || '루나', title: $('#f-title').value, stat,
+    statName: STATS.find(s => s.id === stat)?.name, value: +$('#f-value').value, dc: +$('#f-dc').value,
+  };
+  if (rmSel !== 'auto') ctx.reducedMotion = rmSel === '1';
+  if (seedV !== '') ctx.seed = +seedV;
+  return { ...ctx, ...over };
+}
+$('#f-stat').addEventListener('change', () => { $('#f-stat').dataset.touched = '1'; });
+
+async function play(kind, over = {}) {
+  const ctx = ctxFor(kind, over), t0 = performance.now();
+  lab.running = true; lab.last = undefined;
+  let score, error = null;
+  try { score = await playMinigame(kind, ctx); } catch (e) { error = String(e?.message || e); score = undefined; console.error(e); }
+  const rec = { kind, score, error, adv: advantageOf(ctx), ms: Math.round(performance.now() - t0), ctx };
+  lab.results.push(rec); lab.last = rec; lab.running = false;
+  addRow(rec);
+  return score;
+}
+lab.play = play;
+function addRow(r) {
+  const tr = document.createElement('tr');
+  const name = MINIGAME_INFO[r.kind]?.name ?? r.kind;
+  if (r.error) tr.innerHTML = `<td>${lab.results.length}</td><td>${esc(name)}</td><td colspan="6" class="no">오류: ${esc(r.error)}</td>`;
+  else if (r.score === null) tr.innerHTML = `<td>${lab.results.length}</td><td>${esc(name)}</td><td>${r.adv.toFixed(2)}</td><td class="skip">null</td><td>—</td><td>—</td><td class="skip">건너뜀 → 자동 판정</td><td>${(r.ms / 1000).toFixed(1)}초</td>`;
+  else {
+    const st = starsOf(r.score), sw = swingOf(r.score), ok = r.ctx.value + sw >= r.ctx.dc;
+    tr.innerHTML = `<td>${lab.results.length}</td><td>${esc(name)}</td><td>${r.adv.toFixed(2)}</td><td>${r.score.toFixed(3)}</td><td class="stars">${'★'.repeat(st)}${'☆'.repeat(5 - st)}</td><td>${sw > 0 ? '+' : ''}${sw}</td><td class="${ok ? 'ok' : 'no'}">${ok ? '성공' : '실패'} (${r.ctx.value}${sw >= 0 ? '+' : ''}${sw} vs ${r.ctx.dc})</td><td>${(r.ms / 1000).toFixed(1)}초</td>`;
+  }
+  $('#log').prepend(tr);
+}
+document.querySelectorAll('[data-kind]').forEach(b => b.addEventListener('click', () => { if (!lab.running) play(b.dataset.kind); }));
+$('#b-all').addEventListener('click', async () => { if (lab.running) return; for (const k of Object.keys(MINIGAME_INFO)) await play(k); });
+
+// ── 점수 보정: 봇 정책별 평균 점수 ──
+const DT = 1 / 60;
+const gauss = (r) => { let u = 0; while (!u) u = r(); return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * r()); };
+const BOTS = {
+  exam: { '가만히': null, '마구 누르기': { random: true }, '보통': { tau: 0.28, k: 0.32, noise: 0.05, lapse: 0.25 }, '능숙': { tau: 0.15, k: 0.45, noise: 0.02, lapse: 0.03 } },
+  ball: { '가만히': null, '박마다 세 줄': { chord: true }, '보통': { sigma: 0.06, bias: 0.025, lapse: 0.08, stray: 2 }, '능숙': { sigma: 0.022, bias: 0.005, lapse: 0.01, stray: 0 } },
+  cooking: { '가만히': null, '아무 때나': { mash: true }, '보통': { sigma: 0.085, bias: 0.03 }, '능숙': { sigma: 0.03, bias: 0.008 } },
+  adventure: { '가만히(자동 방어)': 'idle', '공격만': 'atk', '아무거나': 'random', '예고 읽기': 'smart' },
+};
+function simOne(kind, bot, adv, seed) {
+  const r = MI.mulberry32(seed), br = MI.mulberry32(seed ^ 0x9e3779b9);
+  if (kind === 'exam') {
+    const m = MI.examModel({ adv, rand: r }), hist = []; let hold = false, lapse = 0, tog = 0;
+    while (!m.done) {
+      hist.push({ c: m.c, p: m.p, v: m.v });
+      if (bot?.random) { tog -= DT; if (tog <= 0) { hold = br() < 0.5; tog = 0.15 + br() * 0.4; } }
+      else if (bot) { if (lapse > 0) lapse -= DT; else { if (br() < bot.lapse * DT) lapse = 0.3 + br() * 0.4; const o = hist[Math.max(0, hist.length - 1 - Math.round(bot.tau / DT))]; hold = o.c + gauss(br) * bot.noise - o.p - bot.k * o.v > 0; } }
+      m.hold = hold; m.step(DT);
+    }
+    return m.score();
+  }
+  if (kind === 'ball') {
+    const m = MI.ballModel({ adv, rand: r }), ps = [];
+    if (bot?.chord) { for (let t = m.first; t <= m.lastT + 0.01; t += m.beat) for (let l = 0; l < 3; l++) ps.push({ at: t + 0.025 + gauss(br) * 0.04, lane: l }); }
+    else if (bot) { for (const n of m.notes) if (br() >= bot.lapse) ps.push({ at: n.t + bot.bias + gauss(br) * bot.sigma, lane: n.lane }); for (let i = 0; i < bot.stray; i++) ps.push({ at: br() * m.dur, lane: Math.floor(br() * 3) }); }
+    ps.sort((a, b) => a.at - b.at); let i = 0;
+    while (!m.done) { const t1 = m.t + DT; while (i < ps.length && ps[i].at <= t1) { m.press(ps[i].lane, ps[i].at); i++; } m.step(DT); }
+    return m.score();
+  }
+  if (kind === 'cooking') {
+    const m = MI.cookingModel({ adv, rand: r }); let plan = Infinity, round = -1, t = 0;
+    while (!m.done) {
+      if (bot && m.state === 'run') {
+        if (round !== m.round) {
+          round = m.round;
+          if (bot.mash) plan = t + 0.1 + br() * 0.6;
+          else { let best = null; for (const cp of [m.c, 2 - m.c, m.c + 2, 4 - m.c]) { const d = (cp - m.ph) / m.speed; if (d > 0.45 && (best == null || d < best)) best = d; } plan = t + best + bot.bias + gauss(br) * bot.sigma; }
+        }
+        if (t >= plan) { m.stop(); plan = Infinity; }
+      }
+      m.step(DT); t += DT;
+    }
+    return m.score();
+  }
+  const m = MI.adventureModel({ adv, rand: r });
+  const pick = () => {
+    if (bot === 'idle') return 'def';
+    if (bot === 'atk') return 'atk';
+    if (bot === 'random') return ['atk', 'def', 'mag'][Math.floor(br() * 3)];
+    if (m.intent === 'smash') return 'def';
+    if (m.intent === 'guard' || m.intent === 'charge') return m.mp > 0 ? 'mag' : (m.intent === 'guard' ? 'def' : 'atk');
+    return 'atk';
+  };
+  while (!m.over) m.act(pick());
+  return m.score();
+}
+$('#b-calib').addEventListener('click', async () => {
+  const tb = $('#calib tbody'), N = 150; tb.innerHTML = ''; $('#calib').hidden = false; $('#b-calib').disabled = true;
+  for (const [kind, bots] of Object.entries(BOTS)) for (const [label, bot] of Object.entries(bots)) {
+    $('#calib-msg').textContent = `${MINIGAME_INFO[kind].name} · ${label} 계산 중…`;
+    await new Promise(r => setTimeout(r, 0));
+    const cells = [-1, -0.5, 0, 0.5, 1].map(adv => { let s = 0; for (let i = 0; i < N; i++) s += simOne(kind, bot, adv, 1000 + i); return s / N; });
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${esc(MINIGAME_INFO[kind].name)}</td><td>${esc(label)}</td>` + cells.map(v => `<td class="${v >= 0.5 ? 'ok' : v <= 0.2 ? 'no' : ''}">${v.toFixed(2)}</td>`).join('');
+    tb.appendChild(tr);
+  }
+  $('#calib-msg').textContent = '완료'; $('#b-calib').disabled = false;
+});
+
+// 표정·의상 견본
+const moods = [['calm', '차분'], ['focus', '집중'], ['happy', '기쁨'], ['daze', '멍함'], ['hurt', '아픔'], ['sad', '시무룩']];
+const outfits = [['mind', 'book', '지성'], ['social', 'wave', '사교'], ['inner', 'ladle', '내면'], ['body', 'sword', '신체']];
+$('#princesses').innerHTML = outfits.map(([o, p, n]) => `<figure><div class="pic">${princessSVG({ outfit: o, prop: p })}</div>${n}</figure>`).join('')
+  + moods.map(([md, n]) => `<figure><div class="pic">${princessSVG({ outfit: 'social', mood: md, crop: true, sparkle: false })}</div>${n}</figure>`).join('');
+
+// 주소 매개변수로 바로 시작
+const q = new URLSearchParams(location.search);
+if (q.has('value')) { $('#f-value').value = $('#f-value-n').value = q.get('value'); }
+if (q.has('dc')) { $('#f-dc').value = $('#f-dc-n').value = q.get('dc'); }
+if (q.has('rm')) $('#f-rm').value = q.get('rm') === '1' ? '1' : '0';
+if (q.has('seed')) $('#f-seed').value = q.get('seed');
+if (q.has('name')) $('#f-name').value = q.get('name');
+showAdv();
+if (q.get('kind') && MINIGAME_INFO[q.get('kind')]) play(q.get('kind'));
+</script>
+</body>
+</html>

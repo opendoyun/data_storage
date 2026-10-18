@@ -15,10 +15,10 @@
 | 2 | 공주 초상 | 20 | `char/{child,girl,teen,youth,adult}_{body,mind,social,inner}.png` | 768×1040 (3:4) | 캐릭터 시트 |
 | 3 | NPC 초상 | 12 | `npc/<id>.png` | 1280×560 (16:7) | 없음 |
 | 4 | 배경 | 32 | `bg/<id>.png` | 1280×560 (16:7) | 거실 여름·가을·겨울은 `bg/room_spring` |
-| 5 | 엔딩 일러스트 | 32+ | `ending/<엔딩 id>.png` | 1280×720 (16:9) | 캐릭터 시트 + 등장 NPC 초상 |
+| 5 | 엔딩 일러스트 | 48 | `ending/<엔딩 id>.png` | 1280×720 (16:9) | 캐릭터 시트 + 등장 NPC 초상 |
 | 6 | UI | 2 | `ui/title_key.png` `ui/album_cover.png` | 1600×900 (16:9) | 타이틀은 캐릭터 시트 |
 
-합계 **99장** (2026-10-18 기준). `endings_ext.js`에 엔딩이 추가되면 장수도 늘어난다. 정확한 수는 `node tools/gemini/build-manifest.mjs`가 출력한다.
+합계 **115장** (2026-10-18 기준: 엔딩 = 기본 32 + 확장 16). `endings_ext.js`에 엔딩이 추가되면 장수도 늘어난다. 정확한 수는 `node tools/gemini/build-manifest.mjs`가 출력한다.
 엔딩 화면 제목이 "10년 후"이므로 엔딩 일러스트의 공주는 **약 28세 성인**으로 그린다. 성인이어도 단정한 옷차림은 그대로다. 보호자("당신")는 출신과 성별이 플레이마다 다르므로 **뒷모습·실루엣·손으로만** 보이게 한다.
 
 도구 (모두 `game/` 폴더에서 실행, Node 22, 의존성 없음; 이미지 후처리는 Python3 + Pillow 또는 ImageMagick):
@@ -39,14 +39,15 @@
 
 ### A-1. 키 발급
 1. [Google AI Studio](https://aistudio.google.com) → **Get API key** → 키 만들기.
-2. 이미지 생성 모델은 무료 등급에서 막혀 있거나 한도가 매우 낮을 수 있다. 429 `RESOURCE_EXHAUSTED`가 계속되면 해당 프로젝트에 결제를 연결한다.
+2. 이미지 생성 모델은 무료 등급에서 막혀 있거나(한도 0) 한도가 매우 낮을 수 있다. 실행이 `limit: 0` 메시지와 함께 바로 멈추거나 429 `RESOURCE_EXHAUSTED`가 계속되면 AI Studio에서 해당 프로젝트에 결제를 연결한다.
+3. 만든 키는 다음 A-2대로 **환경 설정에만** 넣는다. 메모장·문서·채팅 어디에도 붙여넣어 두지 않는다.
 
 ### A-2. 키 넣기 (채팅에 붙여넣지 말 것)
-키, 토큰, 비밀번호는 **절대 채팅에 붙여넣지 않는다.** 환경 변수로만 넣는다.
+키, 토큰, 비밀번호는 **절대 채팅에 붙여넣지 않는다**(Claude에게도, 다른 사람에게도). 환경의 비밀 값(환경 변수)으로만 넣는다. 도구는 키를 화면·로그·파일 어디에도 출력하지 않는다.
 
 - **Claude Code 클라우드 세션**: 세션 제목 표시줄의 **클라우드 환경 메뉴 → Edit**.
-  **Network secrets**(업데이트 전 앱에서는 **API credentials**) 섹션이 있으면 거기에, 없으면 **환경 변수**로 `GEMINI_API_KEY=<키>`를 추가한다. 다음에 시작하는 **새 세션**부터 적용된다.
-  - 네트워크: 2026-10-18 이 클라우드 환경에서 `generativelanguage.googleapis.com`에 접속되는 것을 확인했다(키 없이 호출하면 Google이 403 "API Key 필요"로 응답). 나중에 정책 때문에 막히면 같은 Edit 화면의 **Network access**에서 더 넓은 수준을 고르거나, **Allowed domains**에 `generativelanguage.googleapis.com`을 추가한다(Allow package managers 체크는 유지). 안내: https://code.claude.com/docs/en/cloud-environments#network-access
+  **Network secrets**(업데이트 전 앱에서는 **API credentials**) 섹션이 있으면 거기에, 없으면 **환경 변수**로 `GEMINI_API_KEY=<키>`를 추가한다(이름은 정확히 `GEMINI_API_KEY`). 저장한 뒤 **새 세션**을 시작해야 적용된다. 새 세션에서 Claude에게 "제미나이 그림 생성 실행해줘"라고만 말하면 된다. 키 값은 말하지 않는다.
+  - 네트워크: 2026-10-18 이 클라우드 환경에서 `generativelanguage.googleapis.com`에 접속되는 것을 확인했다(키 없이 호출하면 Google이 403 "API Key 필요"로 응답). 나중에 정책 때문에 막히면 같은 Edit 화면의 **Network access**에서 더 넓은 수준을 고르거나, **Limited** 수준의 **Allowed domains**에 `generativelanguage.googleapis.com`을 추가한다(Allow package managers 체크는 유지. 업데이트 전 앱에서는 **Custom** 수준에 같은 칸이 있다). 안내: https://code.claude.com/docs/en/cloud-environments#network-access
   - 프록시 환경에서는 `generate.mjs`가 `NODE_USE_ENV_PROXY=1`로 자동 재실행해 `HTTPS_PROXY`를 사용한다.
 - **내 컴퓨터**: `export GEMINI_API_KEY=<키>` (PowerShell: `$env:GEMINI_API_KEY="<키>"`). 셸 기록에 남기 싫으면 `.env` 같은 비공개 파일에서 읽어 오고, 그 파일은 커밋하지 않는다.
 - 선택 환경 변수: `GEMINI_IMAGE_MODEL` (모델 고정), `GEMINI_API_BASE` (기본 `https://generativelanguage.googleapis.com`), `GEMINI_RPM` (분당 요청 수, 기본 10).
@@ -61,7 +62,8 @@ node tools/gemini/generate.mjs --list-models   # (선택) 쓸 수 있는 이미�
 node tools/gemini/generate.mjs                 # 1단계: 캐릭터 시트만 만들고 멈춤
 #   → assets/ref/luna_sheet.png 를 열어 C절 QA로 확인. 다시 뽑기:
 #     node tools/gemini/generate.mjs --keys=ref/luna_sheet --force
-#     (사용자 레퍼런스 그림 파일이 있으면 --sheet-ref=<파일> 추가: 머리·눈·색 참고용으로만 첨부됨)
+#     (사용자가 "공주는 이런 느낌으로" 하고 준 레퍼런스 그림 파일이 있으면 --sheet-ref=<파일> 추가:
+#      머리·눈·색 체계 참고용으로만 첨부되고 화풍·구도는 따라 하지 않도록 지시된다)
 node tools/gemini/generate.mjs                 # 2단계: 나머지 전부 (이미 있는 파일은 건너뜀)
 
 node tools/gemini/fit.mjs --check              # 규격·누락 확인 (exit 0 이면 크기 모두 정상)
@@ -72,7 +74,8 @@ python3 -m http.server 8080                    # 게임에서 눈으로 확인 (
 - 생성 순서는 매니페스트 순서를 따른다(참조 이미지가 먼저). 참조가 아직 없는 항목은 **보류**(blocked)되고 로그에 남는다. `--allow-missing-refs`를 주면 참조 없이 그린다(일관성은 떨어짐).
 - 실패한 항목은 **파일을 만들지 않는다.** 모든 시도는 `assets/generation-log.json`에 key·model·time·bytes·status·error로 기록된다.
 - 모델 자동 선택: ListModels에서 이름에 `image`가 있고 `generateContent`를 지원하는 모델 중 버전이 높은 것, 같은 버전이면 pro 우선. 비용을 줄이려면 `GEMINI_IMAGE_MODEL=gemini-2.5-flash-image`처럼 고정한다.
-- 요청: `responseModalities: ['IMAGE']` + `imageConfig.aspectRatio`(16:7은 21:9로 요청 후 잘라냄). 모델이 거부하면 `['TEXT','IMAGE']`, 비율 없이 순서로 자동으로 바꿔 다시 요청한다. 429·5xx는 지수 백오프로 재시도한다(`Retry-After`·`RetryInfo` 존중).
+- 요청: `POST /v1beta/models/<모델>:generateContent`, 키는 `x-goog-api-key` 헤더로만 보낸다. 본문은 `contents[0].parts` = 프롬프트 텍스트 + 참조 이미지(`inlineData{mimeType,data}`, 긴 변 1024px JPEG로 줄여 첨부), `generationConfig.responseModalities: ['IMAGE']` + `imageConfig.aspectRatio`(16:7은 21:9로 요청 후 잘라냄). 모델이 거부하면 `['TEXT','IMAGE']`, 비율 없이 순서로 자동으로 바꿔 다시 요청한다. 429·5xx·네트워크 오류는 지수 백오프로 재시도한다(`Retry-After`·`RetryInfo` 존중). 한도 0(`limit: 0`), 키 오류(400/401/403), 모델 없음(404)은 재시도하지 않고 전체를 멈춘다.
+- 응답: `candidates[].content.parts[].inlineData`에서 이미지를 꺼낸다. 생각하는 모델이 주는 중간 구도 이미지(`thought: true`)는 건너뛰고 최종 이미지만 쓴다. 이미지가 없으면(`finishReason`, `promptFeedback.blockReason`) 파일을 만들지 않고 사유를 로그에 남긴다.
 - 후처리: 받은 PNG/JPEG를 **가운데 기준으로 목표 비율에 맞게 자르고** 정확한 크기로 줄여 PNG로 저장한다(Pillow, 없으면 ImageMagick). 원본도 보관하려면 `--keep-raw=<폴더>`(저장소 밖 경로 권장).
 
 ### A-4. 비용·시간 (참고치)
@@ -84,10 +87,10 @@ python3 -m http.server 8080                    # 게임에서 눈으로 확인 (
 | 공주 초상 | 20 | $0.78 | $2.68 | 약 4~5분 |
 | NPC 초상 | 12 | $0.47 | $1.61 | 약 2~3분 |
 | 배경 | 32 | $1.25 | $4.29 | 약 6~7분 |
-| 엔딩 일러스트 | 32 | $1.25 | $4.29 | 약 6~7분 |
+| 엔딩 일러스트 | 48 | $1.87 | $6.43 | 약 10분 |
 | UI | 2 | $0.08 | $0.27 | 1분 미만 |
-| **합계** | **99** | **약 $3.9** | **약 $13.3** | **약 20분** |
-| 재생성 여유 포함 (×1.5) | 약 150 | 약 $6 | 약 $20 | 약 30분 |
+| **합계** | **115** | **약 $4.5** | **약 $15.4** | **약 24분** |
+| 재생성 여유 포함 (×1.5) | 약 173 | 약 $6.7 | 약 $23 | 약 36분 |
 
 - 공식: 장수 × 장당 단가. 엔딩이 추가되면 장당 $0.04~$0.13씩 늘어난다. `generate.mjs --dry-run`이 현재 선택 범위의 추정치를 출력한다.
 - 시간은 `--rpm`(분당 상한)과 모델 응답 시간(장당 10~40초)으로 정해진다. 한도가 넉넉하면 `--rpm=20 --concurrency=3`으로 줄일 수 있고, 429가 잦으면 `--rpm=5`로 낮춘다.
@@ -98,8 +101,9 @@ python3 -m http.server 8080                    # 게임에서 눈으로 확인 (
 | exit 2 "GEMINI_API_KEY 환경변수가 없습니다" | A-2대로 키를 환경 변수로 넣고 새 세션에서 다시 실행 |
 | exit 3, HTTP 400 "API key not valid" / 403 | 키가 틀렸거나 Generative Language API를 쓸 수 없는 프로젝트. AI Studio에서 키 확인 |
 | HTTP 404 model not found | `GEMINI_IMAGE_MODEL` 오타 또는 지역 미지원. `--list-models`로 확인 |
-| 429가 계속됨 | 무료 등급 한도 또는 분당 한도. `--rpm` 낮추기, 결제 연결, 다음 날 재실행 (이미 만든 파일은 건너뜀) |
-| `✗ … 이미지 없음 (finishReason=IMAGE_SAFETY …)` | 안전 필터. 표현을 더 단정하게 바꾸는 추가 지시를 `prompt-overrides.json`에 넣고 재생성 |
+| exit 3, "사용 한도가 0입니다 (무료 등급)" | 이 프로젝트는 무료 등급이라 이미지 모델을 쓸 수 없다. AI Studio에서 결제를 연결한 뒤 같은 명령을 다시 실행 |
+| 429가 계속됨 | 분당·일일 한도. `--rpm` 낮추기, 결제 연결, 다음 날 재실행 (이미 만든 파일은 건너뜀) |
+| `✗ … 이미지 없음 (finishReason=IMAGE_SAFETY …)` 또는 `blockReason=…` | 안전 필터. 표현을 더 단정하게 바꾸는 추가 지시를 `prompt-overrides.json`에 넣고 재생성 (`blockReason`은 같은 문장을 다시 보내도 같으므로 바로 실패 처리된다) |
 | `⏸ … 보류 — 참조 이미지 없음` | 참조(시트나 NPC, 봄 거실)를 먼저 만든다. 같은 명령을 다시 실행하면 이어서 진행 |
 | `HTTP network …` | 네트워크 정책(A-2 네트워크 항목) 또는 프록시 확인 |
 
@@ -181,7 +185,7 @@ python3 -m http.server 8080                    # 게임에서 눈으로 확인 (
 - **캐릭터 시트 승인.** 이후 모든 공주 그림의 기준이므로 가장 중요하다.
 - 로그인, 캡차, 사용 한도 같은 안내가 뜨면 직접 처리한다. 제미나이 앱은 하루 이미지 수에 한도가 있을 수 있다. 한도에 걸리면 다음 날 `fit.mjs --check`의 "다음에 그릴 것"부터 이어 간다.
 - 제미나이 앱에서 만든 이미지에는 오른쪽 아래에 작은 공식 표시가 들어갈 수 있다. **지우거나 가리지 않는다.** 표시 없는 파일이 필요하면 A. API 경로를 쓴다.
-- 브라우저 경로는 사람의 손이 많이 간다(99장 × 업로드·다운로드). 키를 만들 수 있다면 A 경로가 빠르고 결과도 재현할 수 있다.
+- 브라우저 경로는 사람의 손이 많이 간다(115장 × 업로드·다운로드). 키를 만들 수 있다면 A 경로가 빠르고 결과도 재현할 수 있다.
 
 ---
 
@@ -234,4 +238,4 @@ node tools/gemini/generate.mjs --dry-run       # 계획 출력 (exit 0)
 node tools/gemini/generate.mjs                 # 키가 없으면 안내 후 exit 2
 node tools/gemini/test-pipeline.mjs            # 목업 API로 생성·재시도·폴백·참조·후처리·건너뛰기 전부 시험 (임시 폴더만 사용)
 ```
-`test-pipeline.mjs`는 `mock-server.mjs`(ListModels + generateContent 흉내, 진짜 작은 PNG/JPEG 응답)를 띄워 `GEMINI_API_BASE=http://127.0.0.1:<port>`로 실제 코드 경로를 끝까지 돌린다. 출력은 OS 임시 폴더에만 쓰고 끝나면 지우며, `game/assets`가 바뀌지 않았는지도 확인한다.
+`test-pipeline.mjs`는 `mock-server.mjs`(ListModels + generateContent 흉내, 요청 본문을 실제 API처럼 엄격히 검사, 진짜 작은 PNG/JPEG 응답)를 띄워 `GEMINI_API_BASE=http://127.0.0.1:<port>`로 `generate.mjs`의 실제 코드 경로를 끝까지 돌린다. 키가 출력·로그·파일에 새지 않는지, thought 이미지 건너뛰기, 차단·한도 0 처리도 본다. 출력은 OS 임시 폴더에만 쓰고 끝나면 지우며, `game/assets` 폴더 전체가 바뀌지 않았는지도 확인한다. 목업 그림은 시험용 단색 그라데이션이며 `game/assets`에는 절대 들어가지 않는다.

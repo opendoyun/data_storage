@@ -23,11 +23,12 @@
 <div class="lab">
   <h1>앨범 실험실</h1>
   <div class="hint">메타 진행(GDD 4.9)과 엔딩 앨범을 가짜 회차 기록으로 확인하는 개발용 페이지. 저장은 메모리에만 한다(실제 게임 기록과 섞이지 않음).
-    주소 뒤에 <code>?scenario=empty|few|many&amp;letters=demo|data&amp;tab=album|letters|runs|shop</code></div>
+    주소 뒤에 <code>?scenario=empty|few|many|v1&amp;letters=demo|data&amp;tab=album|letters|runs|shop</code></div>
   <div class="lab-bar" id="bar">
     <button data-sc="empty">첫 플레이(빈 기록)</button>
     <button data-sc="few">기록 3회</button>
     <button data-sc="many">기록 24회</button>
+    <button data-sc="v1">구버전(v1) 기록 옮기기</button>
     <span class="sep"></span>
     <button id="b-letters">편지: 데모</button>
     <button id="b-engine">실제 엔진으로 1판 기록</button>
@@ -47,6 +48,9 @@ import { renderAlbum, renderNewGameExtras, renderPersonalityMap, CAT_ORDER } fro
 import { ENDINGS } from '../js/data/endings.js';
 import { LETTERS, CATEGORY_LETTERS } from '../js/data/letters.js';
 import { STATS, PERSONALITY } from '../js/data/stats.js';
+import { ANNUAL } from '../js/data/annual.js';
+import { GUARDIANS } from '../js/data/guardians.js';
+import { fillName } from '../js/engine/josa.js';
 
 const q = new URLSearchParams(location.search);
 // ── 메모리 저장소 (loadMeta/saveMeta 경로를 그대로 탄다)
@@ -82,12 +86,17 @@ function fakeFinal(i, def) {
   const others = ENDINGS.filter(e => e.id !== def.id && !e.hidden);
   const ru = others[Math.floor(r() * others.length)];
   const score = Math.round(700 + r() * 700);
+  // 해마다의 결정(engine annualLog 형식): 11~17세, 데이터의 선택지 중 하나
+  const annualLog = Object.entries(ANNUAL).map(([age, a]) => { const o = a.options[Math.floor(r() * a.options.length)]; return { age: Number(age), id: o.id, label: o.label }; });
+  const name = NAMES[i % NAMES.length], guardian = GUARDS[i % GUARDS.length];
+  const s = { seed: 7000 + i, name, guardian, playthrough: i + 1, legacy: [], flags: {}, stats, personality: hist[hist.length - 1], relations: {}, counters: {} };
+  let epilogue = '';
+  try { epilogue = fillName(typeof def.epilogue === 'function' ? def.epilogue(s) : def.epilogue, name, GUARDIANS[guardian].call); } catch { /* 데모 */ }
   return {
-    seed: 7000 + i, name: NAMES[i % NAMES.length], guardian: GUARDS[i % GUARDS.length], playthrough: i + 1,
-    stats, trust: Math.round(30 + r() * 65), stress: 20,
+    ...s, trust: Math.round(30 + r() * 65), stress: 20, annualLog,
     counters: { refusals: Math.floor(r() * 14), forced: Math.floor(r() * 8), persuaded: Math.floor(r() * 6), autonomy: Math.floor(r() * 40), events: 60 + Math.floor(r() * 50), months: 96, collapses: Math.floor(r() * 3), adventures: Math.floor(r() * 15) },
     persHistory: hist,
-    ending: { id: def.id, name: def.name, cat: def.cat, hidden: !!def.hidden, runnerUp: { id: ru.id, name: ru.name }, top: [{ id: def.id, name: def.name, score }, { id: ru.id, name: ru.name, score: score - 90 }], persHistory: hist },
+    ending: { id: def.id, name: def.name, cat: def.cat, hidden: !!def.hidden, epilogue, runnerUp: { id: ru.id, name: ru.name }, top: [{ id: def.id, name: def.name, score }, { id: ru.id, name: ru.name, score: score - 90 }], persHistory: hist, annualLog },
   };
 }
 const byId = (id) => ENDINGS.find(e => e.id === id);
@@ -95,15 +104,19 @@ const PLAN = {
   empty: [],
   few: ['herb_doctor', 'queen', 'herb_doctor'],
   many: ['herb_doctor', 'queen', 'mercenary_king', 'painter', 'herb_doctor', 'merchant_lord', 'saint', 'star_goddess', 'archmage', 'chef', 'queen', 'drifter',
-         'swindler', 'writer', 'farm_owner', 'royal_scholar', 'mercenary_king', 'innkeeper', 'family_home', 'court_musician', 'archbishop', 'guard_captain', 'alchemist', 'queen'],
+         'swindler', 'writer', 'farm_owner', 'royal_scholar', 'mercenary_king', 'innkeeper', 'family_home', 'court_musician', 'archbishop', 'guard_captain', 'guardian_successor', 'queen'],
+  // 구버전(v1) 저장: 엔딩 id 배열만 있음 → 옮긴 뒤 한 판 기록. 밀린 편지가 한꺼번에 쏟아지지 않는지(회차당 상한) 확인
+  v1: ['queen'],
 };
+const V1_RAW = { shards: 7, endings: ['herb_doctor', 'queen', 'painter', 'chef', 'saint', 'archmage', 'writer', 'drifter', 'innkeeper', 'mercenary_king'], owned: ['purse', 'constructor'] };
 function isoDay(n) { return new Date(Date.UTC(2026, 5, 1) + n * 4 * 86400000).toISOString(); }
 
 let meta, album, extras, last = null;
 function build(sc) {
   meta = M.emptyMeta();
+  if (sc === 'v1') { mem.set(M.META_KEY, JSON.stringify(V1_RAW)); const rep = M.loadMetaReport(storage); meta = rep.meta; last = { status: rep.status }; }
   (PLAN[sc] || []).map(byId).filter(Boolean).forEach((def, i) => {
-    last = M.recordRun(meta, fakeFinal(i, def), isoDay(i), src());
+    last = M.recordRun(meta, fakeFinal(i + (sc === 'v1' ? 40 : 0), def), isoDay(i + (sc === 'v1' ? 40 : 0)), src());
     meta = last.meta;
   });
   // 상점에서 몇 개 사 둔 상태로 (많은 기록 시나리오)
@@ -121,7 +134,8 @@ function mount(tab) {
   document.getElementById('last').textContent = last ? JSON.stringify({ ...last, meta: undefined, run: last.run && { ...last.run, persHistory: `[${last.run.persHistory.length}개]` } }, null, 2) : '-';
   document.getElementById('b-letters').textContent = `편지: ${lettersMode === 'demo' ? '데모' : '실제 데이터'}`;
   const runs = meta.runs;
-  document.getElementById('pm-narrow').innerHTML = renderPersonalityMap(runs.length ? runs[runs.length - 1].persHistory : fakeFinal(0, ENDINGS[0]).persHistory, { width: 340 });
+  const nr = runs.length ? runs[runs.length - 1] : (() => { const f = fakeFinal(0, ENDINGS[0]); return { persHistory: f.persHistory, choices: f.annualLog }; })();
+  document.getElementById('pm-narrow').innerHTML = renderPersonalityMap(nr.persHistory, { width: 340, choices: nr.choices, favor: M.endingFavor(byId('queen')) });
 }
 function mountExtras() {
   extras?.destroy();
