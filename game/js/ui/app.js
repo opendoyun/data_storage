@@ -12,7 +12,7 @@ const [MG, META, ALBUM] = await Promise.all([soft('./minigames.js'), soft('../en
 const SETTINGS_KEY = 'starborn_settings';
 const settings = (() => { try { return { minigames: true, ...JSON.parse(localStorage.getItem(SETTINGS_KEY) || '{}') }; } catch { return { minigames: true }; } })();
 const saveSettings = () => { try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings)); } catch {} };
-const store = { getItem: (k) => { try { return localStorage.getItem(k); } catch { return null; } }, setItem: (k, v) => { try { localStorage.setItem(k, v); } catch {} } };
+const store = { getItem: (k) => { try { return localStorage.getItem(k); } catch { return null; } }, setItem: (k, v) => { try { localStorage.setItem(k, v); } catch {} }, removeItem: (k) => { try { localStorage.removeItem(k); } catch {} } };
 let meta = META ? META.loadMeta(store) : null;
 const callOf = (st) => GUARDIANS[st?.guardian]?.call ?? '아빠';
 // 예전 세이브 호환: v0.1 상태에 없는 필드 채우기
@@ -53,7 +53,7 @@ async function mountImage(container, path, fallbackHtml) {
 // ──────────────────────────────────────────────────────────────────────
 function renderTitle() {
   document.body.classList.remove('in-room'); delete document.body.dataset.season;
-  const auto = localStorage.getItem(AUTOSAVE);
+  const auto = store.getItem(AUTOSAVE);
   let hair = 'white', eyes = 'crimson';
   const HAIRS = { white: '#f3f3f7', silver: '#dfe3ee', gold: '#f2d16b', black: '#2b2b35', brown: '#7a4b2a', rose: '#e8a1b4' };
   const EYESC = { crimson: '#c4303a', violet: '#8e6bd6', blue: '#4f8fd6', green: '#5cb27a', amber: '#d6953f', gray: '#8a8f9e' };
@@ -109,11 +109,17 @@ function guardianSelectHtml() {
   const opts = META && meta ? META.startOptions(meta).guardians : Object.entries(GUARDIANS).map(([id, g]) => ({ id, name: g.name, desc: g.desc, unlocked: !g.unlock, need: g.unlock?.shards }));
   return `<select id="f-guardian">${opts.map(o => `<option value="${o.id}" ${o.unlocked ? '' : 'disabled'}>${esc(o.name)} (${esc(o.desc)})${o.unlocked ? '' : ` — 별 조각 ${o.need}개 필요`}</option>`).join('')}</select>`;
 }
+function pmapHtml(e) {
+  if (!ALBUM?.renderPersonalityMap || !e.persHistory?.length) return '';
+  try { return `<div class="panel" style="margin-top:12px"><h2>성격 지도 — 10세부터 18세까지</h2><div class="pmap">${ALBUM.renderPersonalityMap(e.persHistory)}</div></div>`; }
+  catch (err) { console.warn('personality map failed', err); return ''; }
+}
 function openAlbum() {
   if (!ALBUM || !meta) return;
   const bg = h(`<div class="modal-bg album-bg"><div class="modal album-modal" style="max-width:1100px"></div></div>`);
   document.body.appendChild(bg);
-  ALBUM.renderAlbum(bg.firstElementChild, meta, { onClose: () => { bg.remove(); if (META) META.saveMeta(store, meta); }, onChange: (m) => { meta = m; META?.saveMeta(store, meta); } });
+  try { ALBUM.renderAlbum(bg.firstElementChild, meta, { onClose: () => { bg.remove(); if (META) META.saveMeta(store, meta); }, onChange: (m) => { meta = m; META?.saveMeta(store, meta); } }); }
+  catch (err) { console.warn('album failed', err); bg.remove(); toast('앨범을 여는 중 문제가 생겼습니다.'); }
 }
 function hashSeed(str) { if (/^\d+$/.test(str)) return Number(str) % 2147483647; let x = 2166136261; for (const ch of str) { x ^= ch.charCodeAt(0); x = Math.imul(x, 16777619) >>> 0; } return x % 2147483647; }
 
@@ -177,7 +183,7 @@ function renderMain() {
   $('#b-same').onclick = () => { const last = S.history[S.history.length - 1]; if (last) { slots = [...last.slots]; renderCalendar(); } };
   $('#b-save').onclick = () => openSaveMenu('save');
   $('#b-loadm').onclick = () => openSaveMenu('load');
-  $('#b-title').onclick = () => { if (confirm('타이틀로 돌아갈까요? (자동저장은 유지됩니다)')) renderTitle(); };
+  $('#b-title').onclick = async () => { const v = await showModal(`<h3>타이틀로 돌아갈까요?</h3><p>자동저장은 남아 있어서 타이틀에서 이어하기로 돌아올 수 있습니다.</p><div class="choices"><button data-v="yes" class="primary">타이틀로</button><button data-close>계속 키우기</button></div>`); if (v === 'yes') renderTitle(); };
 }
 function bar(v, color) { return `<span class="bar" style="display:inline-block;width:100%;vertical-align:middle"><i style="width:${v}%;background:${color}"></i></span>`; }
 
@@ -262,7 +268,7 @@ async function onRunMonth() {
     await showBirthday(end.report);
     if (end.annual && end.annual.options?.length) await showAnnual(end.annual);
   }
-  localStorage.setItem(AUTOSAVE, E.serialize(S));
+  store.setItem(AUTOSAVE, E.serialize(S));
   lastReport = report;
   renderMain();
 }
@@ -342,18 +348,18 @@ function renderEnding() {
     </div>
     <div class="evimg ending-art" id="ending-art" style="margin-top:12px;aspect-ratio:16/9"></div>
     ${mr && !mr.error ? `<div class="panel" style="margin-top:12px"><h2>별 조각</h2><div>✨ 별 조각 +${mr.shardsGained ?? 0}${(mr.newEndings || []).length ? ' · 새 엔딩 기록' : ''}${(mr.newUnlocks || []).length ? ` · 해금: ${(mr.newUnlocks || []).map(u => esc(u.name ?? u)).join(', ')}` : ''}${(mr.letterUnlocks || []).length ? ` · 새 편지 ${(mr.letterUnlocks || []).length}통 도착` : ''}</div></div>` : ''}
-    ${ALBUM?.renderPersonalityMap && e.persHistory?.length ? `<div class="panel" style="margin-top:12px"><h2>성격 지도 — 10세부터 18세까지</h2><div class="pmap">${ALBUM.renderPersonalityMap(e.persHistory)}</div></div>` : ''}
+    ${pmapHtml(e)}
     <div class="panel" style="margin-top:12px"><h2>마지막 대화 — 8년의 기록으로</h2><div class="words">${e.lastWords.map(w => `<div>${esc(w)}</div>`).join('')}</div></div>
     <div class="panel" style="margin-top:12px"><h2>엔딩 점수 상위 5</h2><div class="summary">${e.top.map(t => `<span class="k">${esc(t.name)}</span><span>${t.score}</span>`).join('')}</div>
       <div class="hint" style="margin-top:8px">최종 능력치: ${STATS.map(s => `${s.name} ${S.stats[s.id]}`).join(' · ')}<br>거부 ${S.counters.refusals} · 강행 ${S.counters.forced} · 자율 ${S.counters.autonomy} · 탈진 ${S.counters.collapses} · 이벤트 ${S.counters.events}</div></div>
-    <div class="actions" style="justify-content:center;margin:20px 0"><button class="primary" id="b-again">새로운 아이와 다시</button>${ALBUM && meta ? '<button id="b-album2">엔딩 앨범 · 편지함</button>' : ''}<button id="b-export">플레이 기록 내보내기(JSON)</button></div>
+    <div class="actions" style="justify-content:center;margin:20px 0"><button class="primary" id="b-again">새로운 아이와 다시</button>${ALBUM && meta ? '<button id="b-album2">엔딩 앨범 · 편지함</button>' : ''}<button id="b-export">플레이 기록 복사(JSON)</button></div>
   </div>`));
   renderPortrait();
   (async () => { const box = $('#ending-art'); if (!box) return; if (await assetExists('ending/' + e.id)) box.style.background = `url(${assetUrl('ending/' + e.id)}) center/cover`; else box.innerHTML = `<div style="padding:14px;color:var(--muted);font-size:12px">🖼 ending/${esc(e.id)}.png — 제미나이 생성 대기 (docs/game-design/gemini-chrome-runbook.md)</div>`; })();
   if ($('#b-album2')) $('#b-album2').onclick = () => openAlbum();
   $('#b-again').onclick = () => renderTitle();
-  $('#b-export').onclick = () => { const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([E.serialize(S)], { type: 'application/json' })); a.download = `starborn_${S.name}_${e.id}.json`; a.click(); };
-  localStorage.removeItem(AUTOSAVE);
+  $('#b-export').onclick = () => { const txt = E.serialize(S); navigator.clipboard?.writeText(txt).then(() => toast('플레이 기록을 복사했습니다.'), () => showModal(`<h3>플레이 기록</h3><p class="hint">아래 내용을 전부 선택해 복사하세요.</p><textarea id="exp-json" readonly style="width:100%;height:240px">${esc(txt)}</textarea><div class="choices"><button data-close>닫기</button></div>`)) ?? toast('이 환경에서는 복사할 수 없습니다.'); };
+  store.removeItem(AUTOSAVE);
 }
 
 // ──────────────────────────────────────────────────────────────────────
@@ -378,7 +384,7 @@ async function openShop() {
     <div class="choices" style="grid-template-columns:repeat(auto-fill,minmax(220px,1fr))">${list.map(it => `<button data-v="${it.id}" ${it.soldOut || !it.affordable ? 'disabled' : ''}><b>${esc(it.name)}</b> <span class="tag">${kinds[it.kind] ?? it.kind}</span><small>${esc(it.desc ?? '')}</small><small>${it.price}G${it.owned ? ` · 보유 ${it.owned}` : ''}${it.soldOut ? ' · 보유 중' : ''}${it.onBuy ? ' · ' + fxSummary(it.onBuy) : ''}${it.monthly ? ' · 매달 ' + fxSummary(it.monthly) : ''}</small></button>`).join('') || '<p>지금 살 수 있는 물건이 없다.</p>'}</div>
     <div class="choices"><button data-close>나가기</button></div>`);
   if (v == null) return;
-  try { const r = E.buyItem(S, v); log(`${r.item.name}을(를) 샀다. (-${r.item.price}G)`); toast(`${r.item.name} 구입`); localStorage.setItem(AUTOSAVE, E.serialize(S)); }
+  try { const r = E.buyItem(S, v); log(`${r.item.name}을(를) 샀다. (-${r.item.price}G)`); toast(`${r.item.name} 구입`); store.setItem(AUTOSAVE, E.serialize(S)); }
   catch (err) { toast(err.message); }
   renderMain();
 }
@@ -388,15 +394,15 @@ async function openShop() {
 // ──────────────────────────────────────────────────────────────────────
 function openSaveMenu(mode) {
   const rows = Array.from({ length: 10 }, (_, i) => {
-    const raw = localStorage.getItem(SLOT(i + 1));
+    const raw = store.getItem(SLOT(i + 1));
     let label = '— 비어 있음 —';
     if (raw) { try { const s = JSON.parse(raw); label = `${s.name} · ${s.age}세 ${s.month}월 · ${s.finished ? '완료' : '진행 중'} · ${new Date(s.savedAt || 0).toLocaleString('ko-KR')}`; } catch { label = '(손상된 데이터)'; } }
     return `<button data-v="${i + 1}" ${mode === 'load' && !raw ? 'disabled' : ''}><b>슬롯 ${i + 1}</b><small>${esc(label)}</small></button>`;
   }).join('');
   showModal(`<h3>${mode === 'save' ? '저장' : '불러오기'}</h3><div class="choices">${rows}</div><div class="choices"><button data-close>닫기</button></div>`, (v) => {
     const n = Number(v);
-    if (mode === 'save') { S.savedAt = Date.now(); localStorage.setItem(SLOT(n), E.serialize(S)); toast(`슬롯 ${n}에 저장했습니다.`); }
-    else { const raw = localStorage.getItem(SLOT(n)); if (raw) { S = migrate(E.deserialize(raw)); slots = ['school', 'farm', 'rest']; renderMain(); toast(`슬롯 ${n}을 불러왔습니다.`); } }
+    if (mode === 'save') { S.savedAt = Date.now(); store.setItem(SLOT(n), E.serialize(S)); toast(`슬롯 ${n}에 저장했습니다.`); }
+    else { const raw = store.getItem(SLOT(n)); if (raw) { S = migrate(E.deserialize(raw)); slots = ['school', 'farm', 'rest']; renderMain(); toast(`슬롯 ${n}을 불러왔습니다.`); } }
   });
 }
 
