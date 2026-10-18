@@ -12,7 +12,7 @@ import { ACTIVITY_MAP } from '../activities.js';
 // 연쇄: ① 일기 (diary_open → diary_noticed → diary_page) ② 늦은 귀가 (late_bell → late_return → window_empty)
 //       ③ 말다툼 (quarrel_spark → quarrel_door → quarrel_soup) ④ 등대 패거리 (kaya_crowd → kaya_dare → kaya_caught)
 // 보조 인물(관계 수치 없음): 카야(항구 등대지기 딸, 16세), 니나(재봉소 집 딸, 동갑)
-// 코어 플래그 콜백: read_letter · open_talk · magic_hidden · has_cat · debt_garrett · origin_hidden · ran_away
+// 코어 플래그 콜백: seen.secret_letter_confront(편지를 몰래 읽음) · open_talk · magic_hidden · has_cat · debt_garrett · origin_hidden · ran_away
 
 // ── GDD 5.2: 스케줄 패턴 분석 ───────────────────────────────────────────
 const mean = (a) => (a.length ? a.reduce((x, y) => x + y, 0) / a.length : 0);
@@ -209,7 +209,8 @@ export default [
           result: `"걱정이면 다 돼? 그럼 나도 {call} 서랍 뒤져도 돼?" 그날 밤 {name}의 방문 손잡이 밑에 의자가 받쳐져 있었다.` } },
       { label: '안 읽었다고 잡아뗀다', effects: { trust: -10, 'pers.good': -2, 'pers.agree': -2 },
         result: `"……그래." {name은} 더 묻지 않았다. 그게 더 무서웠다. 그 뒤로 일기장은 집 어디에서도 보이지 않았다.` },
-      { label: '편지 일까지 꺼내 사과한다', conditions: ['flag.read_letter'], effects: { trust: +4, 'pers.agree': +2, 'stat.sens': +2 },
+      { label: '편지 일까지 꺼내 사과한다', conditions: ['seen.secret_letter_confront >= 1'], // 몰래 읽은 경우만 (아이에게 직접 물은 경우도 read_letter가 켜진다)
+        effects: { trust: +4, 'pers.agree': +2, 'stat.sens': +2 },
         result: `"탑 편지 때도 이랬지. 미안해. 이번이 두 번째야." {name이} 한참 당신을 보다가 새끼손가락을 내밀었다. "세 번째는 없어." 당신은 그 손가락을 걸었다.`, next: 'b03_diary_page' },
     ],
   },
@@ -393,8 +394,8 @@ export default [
     text: `옷 가게에서 당신이 고른 분홍 원피스를 {name이} 슬쩍 내려놓았다. 요즘 {name은} 검은 하이넥, 흰 니트, 발목까지 오는 검은 치마만 입는다. "색 있는 옷을 입으면 별빛이 더 튀어. 검은 데선 그냥…… 별 같고."`,
     choices: [
       { label: '그래도 분홍을 사 준다 (-80G)', conditions: ['gold >= 80'], effects: { gold: -80, 'stat.chm': +3, trust: -3, 'pers.roman': +1 },
-        result: `원피스는 옷장 맨 끝에 걸렸다. 딱 한 번, 당신 생일에 {name이} 그걸 입고 나왔다. "오늘만이야." 별빛이 분홍 위에서 정말로 튀었다.` },
-      { label: '포인트 색 하나만 고르자 (-25G)', effects: { gold: -25, 'stat.chm': +4, 'stat.cult': +2, trust: +4 },
+        result: `원피스는 옷장 맨 끝에 걸렸다. 딱 한 번, 별의 밤에 {name이} 그걸 입고 나왔다. "오늘만이야." 별빛이 분홍 위에서 정말로 튀었다.` },
+      { label: '색 하나만 더하자 (-25G)', effects: { gold: -25, 'stat.chm': +4, 'stat.cult': +2, trust: +4 },
         result: `한참을 고른 끝에 {name은} 리본 하나를 집었다. "한 가지 색이면 별이랑 안 싸워." 검은 옷에 색 하나, 그리고 금빛. 그날부터 그게 {name}의 모습이 되었다.` },
       { label: '네가 좋은 걸 입으렴', effects: { trust: +3, 'pers.extro': -2, 'stat.sens': +2 },
         result: `"검은 걸 입으면 사람들이 나 말고 별만 봐. 그게 편해." {name은} 흰 니트 소매를 손등까지 끌어내렸다. 당신은 그 소매를 오래 보았다.` },
@@ -426,7 +427,7 @@ export default [
         result: `{name은} 투덜대며 내려왔다. 다음 날 밤에도 기와 소리가 났다. 그다음 날도. 당신은 결국 지붕에 작은 난간을 달았다.` },
       { label: '망원경을 들고 올라간다', conditions: ['item.telescope >= 1'], effects: { 'stat.int': +4, 'stat.sens': +3, trust: +4 },
         result: `놋쇠 망원경으로 본 달은 생각보다 울퉁불퉁했다. "저기엔 아무도 안 살겠다." {name이} 조금 안심한 듯 웃었다. "그럼 난 여기 사람이네."` },
-      { label: '아직 말 못 할 게 있다고 한다', conditions: ['flag.origin_hidden'], effects: { trust: +4, 'stat.sens': +2, stress: +4 },
+      { label: '아직 말 못 할 게 있다고 한다', conditions: ['flag.origin_hidden', '!flag.knows_origin'], effects: { trust: +4, 'stat.sens': +2, stress: +4 },
         result: `"너에 대해 아는 게 조금 있어. 아직 말할 때는 아니야. 그래도 숨기는 게 있다는 것까진 숨기기 싫었어." {name은} 오래 달을 보다가 말했다. "……기다릴게. 너무 오래는 말고."` },
     ],
   },

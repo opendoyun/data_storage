@@ -444,7 +444,7 @@ export default [
         fail: { effects: { 'stat.agi': +2, stress: +4, 'pers.good': -1 },
           result: '꼬마는 골목 사이로 사라졌다. 아이는 숨을 몰아쉬며 돌아와 빈자리를 내려다봤다. "……배고팠겠지." 화난 건지 슬픈 건지 모를 목소리였다.' } },
       { label: '다음 장날에 오라고 외친다', effects: { 'stat.moral': +4, 'pers.good': +3, gold: -20, reputation: +2 },
-        result: '"다음 장날에 와! 일 도와주면 한 병 더 줄게!" 꼬마가 골목 끝에서 멈칫했다. 닷새 뒤, 꼬마는 정말 왔다. 이름은 핍. 핍은 그날 좌판을 기가 막히게 잘 지켰다.' },
+        result: '"다음 장날에 와! 일 도와주면 한 병 더 줄게!" 꼬마가 골목 끝에서 멈칫했다. 닷새 뒤, 꼬마는 정말 왔다. 이름은 티모. 티모는 그날 좌판을 기가 막히게 잘 지켰다.' },
       { label: '장터 순찰에게 알린다', effects: { 'pers.agree': +2, 'pers.good': -2, reputation: +2, stress: +5, trust: -2 },
         result: '순찰이 꼬마를 붙잡아 왔다. 상인들은 잘했다고 고개를 끄덕였지만, 꼬마는 울면서 끌려갔다. 아이는 돌려받은 병을 끝내 팔지 못했다. 찬장 구석에 두고 다시는 꺼내지 않았다.' },
       { label: '성당 급식소를 알려 준다', conditions: ["guardian == 'priest'"], effects: { 'stat.faith': +3, 'stat.moral': +3, 'pers.good': +2, reputation: +2 },

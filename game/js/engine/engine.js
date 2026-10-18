@@ -7,7 +7,7 @@ import { ENDINGS } from '../data/endings.js';
 import { GUARDIANS } from '../data/guardians.js';
 import { ITEMS, ITEM_MAP } from '../data/items.js';
 import { ANNUAL } from '../data/annual.js';
-import { evalAll } from './conditions.js';
+import { evalAll, evalCondition } from './conditions.js';
 import { fillName, josa } from './josa.js';
 
 export const START_AGE = 10;
@@ -129,7 +129,9 @@ export function checkRefusals(s, slots) {
     if (s.trust >= 80) prob *= 0.6;
     if (prob > 0 && r.chance(prob)) {
       const prefs = autonomyPreferences(p);
-      const altId = weightedPick(r, prefs, [id]);
+      // 아직 나이가 안 돼 받아주지 않는 활동(모험·극단·묘지기 등)은 대안으로 내밀지 않는다
+      const locked = Object.keys(prefs).filter(k => ACTIVITY_MAP[k]?.minAge > s.age);
+      const altId = weightedPick(r, prefs, [id, ...locked]);
       proposals.push({
         slot: i, activityId: id, alternative: altId,
         reason: s.stress >= 70 ? 'tired' : 'defiant',
@@ -143,7 +145,7 @@ export function checkRefusals(s, slots) {
 
 function refusalLine(s, act, alt) {
   const tired = [
-    `"……${act.name}은 다음에 하면 안 돼? 요즘 계속 피곤해."`,
+    `"……${josa(act.name, '은')} 다음에 하면 안 돼? 요즘 계속 피곤해."`,
     `"미안, 오늘은 정말 못 하겠어. ${alt.name} 정도면 괜찮을 것 같은데."`,
   ];
   const defiant = [
@@ -173,7 +175,7 @@ export function resolveRefusal(s, proposal, decision) {
     } else {
       final = proposal.alternative;
       applyEffects(s, { trust: -2, stress: +4 });
-      text = `설득은 통하지 않았다. 결국 ${josa(s.name,'이')} 원하는 대로 ${ACTIVITY_MAP[final].name}을(를) 하기로. (신뢰 -2)`;
+      text = `설득은 통하지 않았다. 결국 ${josa(s.name,'이')} 원하는 대로 ${josa(ACTIVITY_MAP[final].name, '을')} 하기로. (신뢰 -2)`;
     }
   } else if (decision === 'force') {
     s.counters.forced++;
@@ -220,12 +222,12 @@ export function runMonth(s, slots) {
       id = weightedPick(r, prefs, []);
       act = ACTIVITY_MAP[id];
       if (act.minAge && s.age < act.minAge) { id = 'outing'; act = ACTIVITY_MAP[id]; }
-      lines.push(`[자율] ${josa(s.name,'은')} 스스로 「${act.name}」을(를) 택했다.`);
+      lines.push(`[자율] ${josa(s.name,'은')} 스스로 「${act.name}」${josa(act.name, '을').slice(act.name.length)} 택했다.`);
       // 숨은 이벤트 플래그: 몰래 모험 등
       if (id === 'adventure' && r.chance(0.5)) s.flags.secret_adventure = true;
       if (id === 'graveyard') s.flags.secret_night_work = true;
     }
-    if (act.minAge && s.age < act.minAge) { lines.push(`${act.name}은(는) 아직 나이가 어려 받아주지 않았다. 대신 쉬었다.`); id = 'rest'; act = ACTIVITY_MAP.rest; }
+    if (act.minAge && s.age < act.minAge) { lines.push(`${josa(act.name, '은')} 아직 나이가 어려 받아주지 않았다. 대신 쉬었다.`); id = 'rest'; act = ACTIVITY_MAP.rest; }
 
     // 숙련도
     s.mastery[id] = (s.mastery[id] || 0) + 1;
@@ -372,6 +374,9 @@ export function chooseEvent(s, eventId, choiceIndex, opts = {}) {
   } else outcome = choice;
   effects = outcome.effects || {};
   applyEffects(s, effects);
+  // 같은 달에 줄 서 있던 이벤트를 다시 확인: 방금 선택으로 조건이 깨진 것(첫 만남 중복, 친구/연애 동시 진행 등)은 버린다.
+  // 체인 대상(next)은 필터 뒤에 넣으므로 자기 조건보다 느슨한 진입(악몽→큐브 실수 등)도 유지된다.
+  s.pendingEvents = s.pendingEvents.filter(id => { const e = EVENT_MAP[id]; return !e || e.chainOnly || evalAll(s, e.conditions); });
   if (outcome.next) s.pendingEvents.unshift(outcome.next);
   saveRng(s, r);
   const fill = (t) => fillName(typeof t === 'function' ? t(s) : t, s.name, GUARDIANS[s.guardian]?.call);
@@ -475,16 +480,34 @@ export function scoreEndings(s) {
   return out.sort((a, b) => b.score - a.score);
 }
 
+// 게이트를 통과한 일반 엔딩이 하나도 없을 때의 마지막 안전장치: 실패한 게이트가 가장 적은 엔딩, 같으면 원점수 순.
+// (평범한 삶 같은 게이트 없는 엔딩이 데이터에 있으면 그쪽이 먼저 잡히므로 여기까지 오지 않는다.)
+function closestEnding(s, scored) {
+  const raw = (e) => {
+    const base = Object.entries(e.weights || {}).reduce((a, [st, w]) => a + (s.stats[st] ?? 0) * w, 0);
+    let pm = 1;
+    if (e.pers) for (const [axis, coef] of Object.entries(e.pers)) pm += (s.personality[axis] / 100) * coef;
+    return base * clamp(pm, 0.4, 1.8);
+  };
+  const cand = ENDINGS.filter(e => !e.hidden).map(e => ({ id: e.id, failed: (e.gates || []).filter(g => !evalCondition(s, g)).length, raw: raw(e) }));
+  cand.sort((a, b) => a.failed - b.failed || b.raw - a.raw);
+  return cand.length ? scored.find(x => x.id === cand[0].id) : scored[0];
+}
+
 export function computeEnding(s) {
   const scored = scoreEndings(s);
   const hidden = ENDINGS.filter(e => e.hidden && evalAll(s, e.gates));
-  const chosen = hidden.length ? scored.find(x => x.id === hidden[0].id) : scored.find(x => !x.hidden) ?? scored[0];
+  // 점수 0(게이트 실패)끼리의 안정 정렬 때문에 ENDINGS[0](여왕)이 뽑히던 문제: 게이트를 통과한 엔딩만 고른다.
+  let chosen = hidden.length ? scored.find(x => x.id === hidden[0].id) : scored.find(x => !x.hidden && x.gate);
+  const fallback = !chosen;
+  if (fallback) chosen = closestEnding(s, scored);
   const runner = scored.find(x => x.id !== chosen.id && !x.hidden && x.score > 0);
   const def = ENDINGS.find(e => e.id === chosen.id);
   return { id: chosen.id, name: chosen.name, cat: chosen.cat, hidden: chosen.hidden, runnerUp: runner ? { id: runner.id, name: runner.name } : null,
     epilogue: fillName(typeof def.epilogue === 'function' ? def.epilogue(s) : def.epilogue, s.name, GUARDIANS[s.guardian]?.call),
     persHistory: s.persHistory, annualLog: s.annualLog,
-    lastWords: lastDialogue(s), top: scored.slice(0, 5).map(x => ({ id: x.id, name: x.name, score: Math.round(x.score) })) };
+    lastWords: lastDialogue(s), top: scored.slice(0, 5).map(x => ({ id: x.id, name: x.name, score: Math.round(x.score) })),
+    ...(fallback ? { fallback: true } : {}) };
 }
 
 // 8년의 기록으로 만드는 '마지막 대화' (GDD 5.2)
@@ -500,8 +523,11 @@ export function lastDialogue(s) {
   const top = Object.entries(counts).sort((a, b) => b[1] - a[1])[0];
   if (top) L.push(`"8년 동안 제일 많이 한 건 ${josa(ACTIVITY_MAP[top[0]].name, '이었')}어. ${top[1]}번. 세어 봤어."`);
   const c = s.counters;
+  // 거부를 실제로 아이 뜻대로 넘겨준 횟수(받아들임 + 설득 실패). 설득에 성공한 거부는 '들어준' 것이 아니다.
+  const granted = c.refusals - c.forced - (c.persuaded || 0);
   if (c.forced >= 6) L.push(`"솔직히 말하면, 하고 싶지 않다고 했을 때 그냥 하라고 한 게 ${c.forced}번이야. 그땐 미웠어. 지금은… 조금 알 것 같아."`);
-  else if (c.refusals > 0 && c.forced <= 1) L.push(`"내가 싫다고 했을 때 ${josa(g, '은')} 거의 항상 들어줬어. 그게 얼마나 큰 일인지 이제 알아."`);
+  else if (c.refusals > 0 && c.forced <= 1 && granted >= c.refusals * 0.75) L.push(`"내가 싫다고 했을 때 ${josa(g, '은')} 거의 항상 들어줬어. 그게 얼마나 큰 일인지 이제 알아."`);
+  else if (c.refusals > 0 && (c.persuaded || 0) >= c.refusals / 2) L.push(`"내가 싫다고 하면 ${josa(g, '은')} 화내는 대신 끝까지 이야기했잖아. 결국 하게 된 날이 더 많았는데, 이상하게 억울하지는 않았어."`);
   if (c.autonomy >= 12) L.push(`"나한테 맡겨 준 날들이 ${c.autonomy}번. 그 날들에 내가 누군지 알게 됐어."`);
   else if (c.autonomy === 0) L.push(`"열흘을 통째로 나한테 맡겨 준 적은 한 번도 없었던 거, ${josa(g, '은')} 알아? 그래서 지금 이 길은 내가 처음으로 혼자 고른 거야."`);
   if (c.collapses >= 2) L.push(`"쓰러진 적이 ${c.collapses}번. 그때마다 ${josa(g, '이')} 밤새 옆에 있었던 거, 큐브가 말해줬어."`);

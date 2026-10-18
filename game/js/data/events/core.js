@@ -30,7 +30,14 @@ const EVENTS = [
       { label: '요리 대회에 나간다', check: { stat: 'sens', dc: 180 },
         success: { effects: { 'stat.sens': +6, 'stat.chm': +3, reputation: +4, gold: +60 }, result: '호박 파이가 심사위원을 울렸다. 1등.' },
         fail: { effects: { 'stat.sens': +2, stress: +4 }, result: '파이가 조금 탔다. 그래도 집에 와서 둘이 다 먹었다.' } },
-      { label: '밤의 춤을 구경한다', effects: { 'stat.sens': +3, 'rel.leon': +4, 'pers.roman': +2, stress: -8 }, result: '불꽃 아래서 리온이 손을 내밀었다. 아이는 잠깐 망설이다 잡았다.' },
+      // 10세부터 매년 오는 고정 이벤트라 리온과의 춤은 연인(leon_love, 16세 이상)이 된 뒤에만 (계약서 §3-2).
+      { label: '밤의 춤을 구경한다', effects: { 'stat.sens': +3, 'pers.roman': +2, stress: -8 }, result: '모닥불 둘레로 마을 사람들이 손을 잡고 원무를 돌았다. 아이도 그 틈에 끼어 밤늦도록 돌았다.' },
+      // 리온이 아직 마을의 '우물가 소년'일 때(만났고, 정체가 드러나기 전)는 낮의 친구 장면, 연인이 된 뒤에는 불꽃 아래의 춤.
+      { label: '리온과 축제를 돈다', conditions: [(s) => !!s.flags.leon_love || (!!s.flags.met_leon && !s.seen.leon_truth && !s.seen.b11_leon_lantern && !s.seen.leon_confession)],
+        effects: { 'rel.leon': +4, 'pers.extro': +1, 'pers.roman': +1, stress: -8 },
+        result: (s) => s.flags.leon_love
+          ? '불꽃 아래서 리온이 손을 내밀었다. 아이는 잠깐 망설이다 잡았다.'
+          : '리온은 사과 던지기 노점에서 한 번도 못 맞혔다. 아이가 배를 잡고 웃자 리온도 따라 웃었다. 돌아오는 길, 둘은 내년엔 누가 더 많이 맞히나 내기를 걸었다.' },
     ] },
   { id: 'fest_starnight', title: '별의 밤 · 생일', month: 12, fixed: true, repeatable: true, image: 'bg/starnight',
     text: `{name}의 생일. 세 개의 달이 가장 밝은 밤. 큐브가 케이크를 들고 둥실 떠 있다.`,
@@ -64,7 +71,8 @@ const EVENTS = [
       { label: '경계하며 지나간다', effects: { 'flag.met_elda': true, 'rel.elda': +2 }, result: '그녀는 미소만 지었다. 아이는 자꾸 뒤를 돌아봤다.' },
     ] },
   { id: 'garrett_sword', title: '목검', age: [10, 12], weight: 2, npc: 'garrett', conditions: ['rel.garrett >= 15'],
-    text: `가렛이 아이 키에 맞는 목검을 깎아 왔다. "기사 양반 딸이면 이 정도는 쥘 줄 알아야지."`,
+    // 출신 조건이 없으므로 호칭은 출신마다 (모험가는 일곱 번째 계단에서 가렛을 끌고 나온 옛 대장 — b06).
+    text: (s) => `가렛이 아이 키에 맞는 목검을 깎아 왔다. "${({ knight: '기사 양반 딸이면', adventurer: '우리 대장 딸이면' })[s.guardian] ?? '이 집 딸이면'} 이 정도는 쥘 줄 알아야지."`,
     choices: [
       { label: '받는다', effects: { 'stat.str': +4, 'stat.agi': +3, 'rel.garrett': +6, 'pers.extro': +1 }, result: '아이가 마당에서 밤늦게까지 휘둘렀다.' },
       { label: '아직 이르다고 거절한다', effects: { 'rel.garrett': -3, 'stat.eti': +2 }, result: '가렛은 어깨를 으쓱했다. "언젠가는."' },
@@ -85,7 +93,8 @@ const EVENTS = [
     ] },
 
   // ── 소녀기 (12~13) ──────────────────────────────────────────────────
-  { id: 'theodora_rival', title: '라이벌의 등장', age: [12, 13], weight: 3, npc: 'theodora',
+  // 테오도라의 유일한 자기소개. 다른 테오도라 장면은 모두 12세 이상이므로, 12세 1월 고정으로 두어 언제나 첫 만남이 먼저 오게 한다.
+  { id: 'theodora_rival', title: '라이벌의 등장', age: [12, 12], month: 1, fixed: true, npc: 'theodora',
     text: `예절학교 앞에서 금발 소녀가 {name을} 위아래로 훑었다. "시골 출신이구나? 나는 테오도라. 기억해 둬."`,
     choices: [
       { label: '맞받아치라고 한다', effects: { 'stat.elo': +4, 'pers.extro': +2, 'rel.theodora': +5, 'pers.agree': -1 }, result: '"기억할 만한 이름인지는 보고 결정할게." 테오도라가 눈을 크게 떴다.' },
@@ -112,8 +121,11 @@ const EVENTS = [
   { id: 'magic_spark', title: '손끝의 불꽃', age: [12, 14], weight: 2, conditions: ['stat.mag >= 100', '!flag.magic_awake'],
     text: `밤중에 {name}의 방에서 빛이 새어 나왔다. 손바닥 위에 작은 별이 떠 있다. 아이도 놀라 있다.`,
     choices: [
-      { label: '마법탑에 데려간다', effects: { 'flag.magic_awake': true, 'stat.mag': +10, 'rel.elda': +3, gold: -50 }, result: '탑의 학자들이 수선을 떨었다. "이 아이는……" 그들은 말을 끝내지 않았다.' },
-      { label: '엘다에게 묻는다', conditions: ['flag.met_elda'], effects: { 'flag.magic_awake': true, 'stat.mag': +8, 'rel.elda': +10, 'flag.elda_secret_1': true }, result: '"드디어." 엘다는 아이의 손을 잡고 오래 말이 없었다. "네 어머니도 그랬어요."' },
+      { label: '마법탑에 데려간다', effects: { 'flag.magic_awake': true, 'stat.mag': +10, 'rel.elda': +3, gold: -50 },
+        result: (s) => (s.mastery?.magic ?? 0) > 0
+          ? '수업마다 드나들던 탑인데, 이번엔 학자들이 수선을 떨었다. "이 아이는……" 그들은 말을 끝내지 않았다.'
+          : '탑의 학자들이 수선을 떨었다. "이 아이는……" 그들은 말을 끝내지 않았다.' },
+      { label: '엘다에게 묻는다', conditions: ['flag.met_elda'], effects: { 'flag.magic_awake': true, 'stat.mag': +8, 'rel.elda': +10, 'flag.elda_secret_1': true }, result: '"드디어." 엘다는 아이의 손을 잡고 오래 말이 없었다. "{name}의 어머니도 그랬어요."' },
       { label: '아무에게도 말하지 말라고 한다', effects: { 'flag.magic_awake': true, 'flag.magic_hidden': true, trust: -2, 'pers.extro': -3 }, result: '아이는 고개를 끄덕였다. 그러나 밤마다 불빛은 조금씩 더 밝아졌다.' },
     ] },
   { id: 'inn_stranger', title: '여관의 손님', age: [12, 16], weight: 2, requiresActivity: 'inn',
@@ -153,10 +165,14 @@ const EVENTS = [
     choices: [
       { label: '가렛에게 찾아달라고 부탁한다', conditions: ['rel.garrett >= 30'], effects: { 'rel.garrett': +5, trust: +3, stress: -5, 'flag.ran_away': true }, result: '이틀 뒤 가렛이 아이를 데려왔다. 아이는 항구에서 배를 보고 있었다고 했다.' },
       { label: '기다린다', effects: { trust: +8, 'pers.agree': +4, 'flag.ran_away': true, stress: -3, gHealth: -8 }, result: '닷새 뒤 아이가 돌아왔다. "……기다렸어?" "응." 그게 전부였다. 그게 다였다.' },
-      { label: '직접 찾아 나선다', effects: { trust: -3, gHealth: -10, 'flag.ran_away': true }, result: '사흘 만에 평원 끝 엘다의 집에서 찾았다. 아이는 당신을 보고 뒤돌아섰다.' },
+      { label: '직접 찾아 나선다', effects: { trust: -3, gHealth: -10, 'flag.ran_away': true },
+        result: (s) => s.flags.met_elda ? '사흘 만에 평원 끝 엘다의 집에서 찾았다. 아이는 당신을 보고 뒤돌아섰다.' : '사흘 만에 평원 끝 약초 마법사의 오두막에서 찾았다. 아이는 당신을 보고 뒤돌아섰다.' },
     ] },
-  { id: 'theodora_duel', title: '무도회 전야', age: [14, 16], weight: 2, npc: 'theodora', conditions: ['rel.theodora >= 10'],
-    text: `테오도라가 왕도 무도회에 {name을} "초대"했다. 분명히 망신을 줄 작정이다.`,
+  // 이미 가까워진 사이(rel 40+)라면 망신이 아니라 진심 승부다. b11 '마지막 왈츠' 뒤에는 열리지 않는다.
+  { id: 'theodora_duel', title: '무도회 전야', age: [14, 16], weight: 2, npc: 'theodora', conditions: ['rel.theodora >= 10', '!seen.b11_theo_ball_final'],
+    text: (s) => s.relations.theodora >= 40
+      ? '테오도라가 왕도 무도회 초대장을 내밀었다. "이번엔 봐주지 않을 거야. 도망치면 평생 놀릴 거고." 진심으로 겨루고 싶은 눈이다.'
+      : '테오도라가 왕도 무도회에 {name을} "초대"했다. 분명히 망신을 줄 작정이다.',
     choices: [
       { label: '춤으로 승부한다', check: { stat: 'eti', dc: 230, bonus: (s) => s.stats.chm * 0.3 },
         success: { effects: { 'stat.eti': +8, 'stat.chm': +6, reputation: +8, 'rel.theodora': +10, 'rel.loren': +5, 'flag.ball_won': true }, result: '홀이 멈췄다. 테오도라가 처음으로 진심으로 박수를 쳤다. "……인정."' },
@@ -183,9 +199,10 @@ const EVENTS = [
   { id: 'debt_due', title: '빚 갚는 날', age: [15, 17], weight: 4, conditions: ['flag.debt_garrett'], npc: 'garrett',
     text: `가렛이 찾아왔다. "약속한 300G."`,
     choices: [
-      { label: '갚는다 (-300G)', conditions: ['gold >= 300'], effects: { gold: -300, 'flag.debt_garrett': false, 'rel.garrett': +10, reputation: +3 }, result: '"기사는 기사군." 가렛이 손을 내밀었다.' },
+      { label: '갚는다 (-300G)', conditions: ['gold >= 300'], effects: { gold: -300, 'flag.debt_garrett': false, 'rel.garrett': +10, reputation: +3 },
+        result: (s) => s.guardian === 'knight' ? '"기사는 기사군." 가렛이 손을 내밀었다.' : '"약속은 지키는군." 가렛이 손을 내밀었다.' },
       { label: '아이가 용병단 일을 돕는 것으로 대신한다', effects: { 'flag.debt_garrett': false, 'stat.str': +10, 'stat.agi': +8, 'rel.garrett': +8, stress: +12, 'pers.agree': -2 }, result: '석 달 동안 아이는 용병단 심부름을 했다. 돌아왔을 때 눈빛이 달라져 있었다.' },
-      { label: '못 갚는다고 한다', effects: { 'flag.debt_garrett': false, 'rel.garrett': -25, reputation: -10, infamy: +8 }, result: '가렛은 아무 말 없이 떠났다. 그 뒤로 도장 문은 열리지 않았다.' },
+      { label: '못 갚는다고 한다', effects: { 'flag.debt_garrett': false, 'rel.garrett': -25, reputation: -10, infamy: +8 }, result: '가렛은 아무 말 없이 떠났다. 한동안 도장에서 그의 웃음소리가 들리지 않았다.' },
     ] },
   { id: 'night_market', title: '밤 시장의 유혹', age: [14, 17], weight: 1.5, conditions: ['pers.good <= -10'],
     text: `{name이} 밤 시장에서 수상한 물건을 팔아 돈을 벌어 왔다. 가방에 금화가 가득하다.`,
@@ -203,7 +220,8 @@ const EVENTS = [
       { label: '단호히 거절한다', effects: { trust: +4, reputation: -5, 'flag.tower_refused': true, 'pers.agree': -2 }, result: '"이 아이는 내 딸이다." 사자는 "다시 오겠다"고 했다.' },
       { label: '조건부로 응한다 (주 1회 수업)', effects: { 'stat.mag': +25, 'stat.int': +10, 'flag.tower_lessons': true, trust: -2, gold: +200 }, result: '탑은 수업료 대신 장학금을 보냈다. 아이는 매주 탑에 다닌다. 돌아올 때마다 조금 멀어진 느낌.' },
     ] },
-  { id: 'elda_truth', title: '엘다의 고백', age: [15, 17], weight: 3, npc: 'elda', conditions: ['rel.elda >= 45', 'flag.elda_secret_1'],
+  // 이미 출생의 진실을 아는 아이에게 두 번 밝히지 않는다. 16세 1월은 고정 b05_sixteen_dawn의 달이라 같은 달에 겹치지 않게 비운다.
+  { id: 'elda_truth', title: '엘다의 고백', age: [15, 17], weight: 3, npc: 'elda', conditions: ['rel.elda >= 45', 'flag.elda_secret_1', '!flag.knows_origin', (s) => !(s.age === 16 && s.month === 1)],
     text: `엘다가 당신을 따로 불렀다. "말할 때가 됐어요. 그 아이는 별에서 온 게 아니에요. 왕실 마법사였던 어머니가… 탑에서 도망치며 하늘에 숨겼죠. 저는 그 어머니의 스승이었어요."`,
     choices: [
       { label: '아이에게 전부 말한다', effects: { trust: +10, 'stat.sens': +6, 'flag.knows_origin': true, 'rel.elda': +10 }, result: '아이는 오래 울었다. 그리고 물었다. "그래도 {call은} 계속 내 {call이야}, 그렇지?" "응."' },
@@ -211,8 +229,14 @@ const EVENTS = [
     ] },
 
   // ── 청년기 (16~17) ──────────────────────────────────────────────────
-  { id: 'leon_confession', title: '달빛 아래', age: [16, 17], weight: 3, npc: 'leon', romance: true, conditions: ['rel.leon >= 55', 'flag.leon_promise', '!flag.b11_leon_friend', '!flag.leon_love'],
-    text: `리온이 돌아왔다. 왕자 신분을 숨기지 않고. 정원에서 {name}에게 무언가 말했고, 아이가 얼굴을 붉히며 들어왔다.`,
+  // b11 등불 장면(b11_leon_lantern) 뒤라면 '두 번째 기회'로, 정체 발각(leon_truth)을 못 본 아이에게는 이 장면이 곧 발각이 된다.
+  // '지금 정하지 않아도 돼'(b11_leon_waiting) 길은 b11_leon_unsent가 맡는다.
+  { id: 'leon_confession', title: '달빛 아래', age: [16, 17], weight: 3, npc: 'leon', romance: true, conditions: ['rel.leon >= 55', 'flag.leon_promise', '!flag.b11_leon_friend', '!flag.leon_love', '!flag.b11_leon_waiting'],
+    text: (s) => s.seen.b11_leon_lantern
+      ? '리온이 다시 찾아왔다. 등불 축제 날 끝내 하지 못한 말을 하러 왔단다. 정원에서 {name}에게 무언가 말했고, 아이가 얼굴을 붉히며 들어왔다.'
+      : s.seen.leon_truth
+        ? '리온이 돌아왔다. 왕자 신분을 숨기지 않고. 정원에서 {name}에게 무언가 말했고, 아이가 얼굴을 붉히며 들어왔다.'
+        : '리온이 돌아왔다. 약속대로 아무것도 숨기지 않고, 왕실 문장을 단 망토 차림으로. 우물가의 그 소년이 왕자였다. 정원에서 {name}에게 무언가 말했고, 아이가 얼굴을 붉히며 들어왔다.',
     choices: [
       { label: '아이의 마음을 묻는다', effects: { trust: +6, 'rel.leon': +10, 'pers.roman': +4, 'flag.leon_love': true }, result: '"……좋아." 아이가 베개에 얼굴을 묻고 말했다.' },
       { label: '아직 이르다고 한다', effects: { trust: -5, 'rel.leon': -5, 'pers.roman': -2, 'pers.agree': -2 }, result: '아이는 반박하지 않았다. 그게 더 아팠다.' },

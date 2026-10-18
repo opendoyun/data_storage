@@ -228,11 +228,11 @@ export default [
   {
     id: 'b12_false_pedigree', title: '삼백 년짜리 족보', age: [15, 17], weight: 3, image: 'bg/guild_hall',
     conditions: ['flag.b12_guild_tongue', '!flag.b12_left_guild', '!flag.b12_guild_fallen'],
-    text: `포목상 바르톨은 하인 품삯을 석 달째 미루면서 귀족 족보 살 돈은 아끼지 않는다. 길드는 {name}에게 몰락한 귀족 가문의 막내딸 역을 맡겼다. 낡은 족보 한 권, 연기 한 번에 500G. 상인 회관 뒷방, 바르톨이 땀을 닦으며 물었다. "아가씨, 이 문장이 정말 삼백 년 됐소?"`,
+    text: `포목상 도벤은 하인 품삯을 석 달째 미루면서 귀족 족보 살 돈은 아끼지 않는다. 길드는 {name}에게 몰락한 귀족 가문의 막내딸 역을 맡겼다. 낡은 족보 한 권, 연기 한 번에 500G. 상인 회관 뒷방, 도벤이 땀을 닦으며 물었다. "아가씨, 이 문장이 정말 삼백 년 됐소?"`,
     choices: [
       { label: '귀족 아가씨를 연기한다', check: { stat: 'elo', dc: 330, bonus: (s) => s.stats.eti * 0.3 },
         success: { effects: { gold: +250, infamy: +10, 'stat.elo': +8, 'pers.good': -3 },
-          result: `{name}의 인사는 마담 로렌이 봤어도 흠잡지 못했을 것이다. 바르톨은 족보를 품에 안고 울먹였다. 길드 몫을 떼고도 250G. 그날 밤 아이가 금화를 세다 말고 물었다. "그 하인들 품삯, 이제 받았을까?"` },
+          result: `{name}의 인사는 마담 로렌이 봤어도 흠잡지 못했을 것이다. 도벤은 족보를 품에 안고 울먹였다. 길드 몫을 떼고도 250G. 그날 밤 아이가 금화를 세다 말고 물었다. "그 하인들 품삯, 이제 받았을까?"` },
         fail: { effects: { infamy: +8, reputation: -6, stress: +10, 'stat.elo': +3 },
           result: `"이 문장, 작년에 우리 가게에서 판 손수건 무늬인데요?" 차를 내오던 하녀가 중얼거렸다. {name은} 창문으로 빠져나왔다. 이튿날부터 포목점 앞에 '은발 사기꾼 주의' 벽보가 붙었다.` } },
       { label: '몫을 하인들 품삯으로 돌린다', effects: { infamy: +6, 'stat.elo': +4, 'stat.moral': +3, 'pers.good': +1, 'flag.b12_guild_grudge': true },
@@ -240,7 +240,7 @@ export default [
       { label: '하녀에게 몰래 쪽지를 건넨다', effects: { 'stat.moral': +5, 'pers.good': +3, stress: +8, 'flag.b12_guild_grudge': true, 'flag.b12_bureau_eye': true },
         result: `{name은} 연기 대신 차를 내오는 하녀 손에 쪽지를 쥐여 줬다. '족보는 가짜. 품삯부터 받으세요.' 일은 틀어졌고 길드는 누가 샜는지 찾기 시작했다. 그날따라 군밤 장수 할머니가 군밤을 두 봉지 줬다.` },
       { label: '족보 대신 예절을 판다', conditions: ['stat.eti >= 200'], effects: { gold: +80, 'stat.eti': +5, 'stat.elo': +3, 'pers.good': +1, 'flag.b12_guild_grudge': true },
-        result: `"족보보다 인사법이 먼저예요." {name은} 연기 대신 열흘 동안 바르톨에게 귀족식 예절을 가르쳤다. 수업료 80G, 거짓말은 한 마디도 없었다. 길드 노인이 장부를 덮었다. "우리가 언제부터 가정교사 협회였나."` },
+        result: `"족보보다 인사법이 먼저예요." {name은} 연기 대신 열흘 동안 도벤에게 귀족식 예절을 가르쳤다. 수업료 80G, 거짓말은 한 마디도 없었다. 길드 노인이 장부를 덮었다. "우리가 언제부터 가정교사 협회였나."` },
     ],
   },
   {

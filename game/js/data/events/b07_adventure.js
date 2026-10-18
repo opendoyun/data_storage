@@ -333,7 +333,7 @@ export default [
       { label: '아직 이르다', effects: { trust: -5, 'stat.int': +2, 'pers.agree': -2, stress: +6 },
         result: `{name은} 말없이 조합을 나왔다. 돌아오는 길, 아이가 의뢰서 한 장을 몰래 떼어 온 걸 당신은 봤다. 못 본 척했다.` },
       { label: '닳은 은패를 내민다', conditions: ["guardian == 'adventurer'"], effects: { trust: +6, 'pers.ambit': +2, 'flag.b07_guild_card': true },
-        result: `오베드 영감이 은패를 한참 들여다보더니 아무것도 묻지 않고 보증인 칸에 도장을 찍었다. "수수료는 됐소." {name은} 당신을 처음 보는 사람처럼 쳐다봤다.` },
+        result: `오베드 영감이 은패를 한참 들여다보았다. 뒤에서 누군가 수군거렸지만, 영감은 아무것도 묻지 않고 보증인 칸에 도장을 찍었다. "수수료는 됐소." {name은} 당신을 처음 보는 사람처럼 쳐다봤다.` },
     ],
   },
   {
@@ -433,7 +433,7 @@ export default [
   },
   {
     id: 'b07_theodora_expedition', title: '테오도라 원정대', age: [14, 16], weight: 2, requiresActivity: 'adventure', npc: 'theodora',
-    conditions: ['rel.theodora >= 15'],
+    conditions: ['rel.theodora >= 15', '!seen.b11_theo_secret'], // 영지가 담보로 넘어간 뒤(b11_theo_secret)라면 호위 넷·새 갑옷은 맞지 않는다
     text: `숲 입구에 테오도라가 호위 넷을 거느리고 나타났다. 반짝이는 새 갑옷까지 입었다. "너만 모험하는 줄 알았니? 나도 메아리 동굴의 수정을 따러 왔어. 누가 먼저 가져오나 내기할래?" 호위들은 벌써 지쳐 보였다.`,
     choices: [
       { label: '내기를 받는다', check: { stat: 'agi', dc: 150 }, minigame: 'adventure',

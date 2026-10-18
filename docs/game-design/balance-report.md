@@ -1,23 +1,23 @@
 # 「별의 공주」 밸런스 보고서 — 엔딩 도달 가능성 · 이벤트 커버리지
 
-> 자동 생성: `node tools/reach.mjs 24 --only=knight_errant` (2026-10-18). 콘텐츠가 들어올 때마다 다시 돌린다. 직접 수정하지 말 것.
+> 자동 생성: `node tools/reach.mjs 24` (2026-10-18). 콘텐츠가 들어올 때마다 다시 돌린다. 직접 수정하지 말 것.
 
-- 데이터: 이벤트 **450**개 (core.js 36, b01_childhood.js 28, b02_school_friends.js 28, b03_adolescence.js 30, b04a_careers_body_art.js 28, b04b_careers_mind_faith.js 27, b05_origin.js 29, b06_guardian.js 27, b07_adventure.js 28, b08_work.js 31, b09_education.js 28, b10_seasons.js 27, b11_relationships.js 30, b12_shadows.js 27, b13_mysteries.js 27, b14_legacy.js 19) · 엔딩 **48**종 (히든 8) · 연간 결정 7개 나이 · 아이템 36종
-- 실행: seek 24판 × 엔딩 1종 + 일반 정책 2000판 (+ 커버리지용 2회차 이상 200판) · 시드 1 · 보호자 knight/scholar · 미니게임 점수 0.7 · 상점 사용 · 워커 4 · 22.5초
+- 데이터: 이벤트 **450**개 (core.js 36, b01_childhood.js 28, b02_school_friends.js 28, b03_adolescence.js 30, b04a_careers_body_art.js 28, b04b_careers_mind_faith.js 27, b05_origin.js 29, b06_guardian.js 27, b07_adventure.js 28, b08_work.js 31, b09_education.js 28, b10_seasons.js 27, b11_relationships.js 30, b12_shadows.js 27, b13_mysteries.js 27, b14_legacy.js 19) · 엔딩 **49**종 (히든 8) · 연간 결정 7개 나이 · 아이템 36종
+- 실행: seek 24판 × 엔딩 49종 + 일반 정책 2000판 (+ 커버리지용 2회차 이상 200판) · 시드 1 · 보호자 knight/scholar · 미니게임 점수 0.7 · 상점 사용 · 워커 4 · 142.1초
 
 ## 요약
 
 | 지표 | 값 | 기준 |
 |---|---|---|
-| 목표 추구(seek)로 도달한 엔딩 | **1 / 1** (평균 성공률 79.2%) | 전 엔딩 도달 |
+| 목표 추구(seek)로 도달한 엔딩 | **49 / 49** (평균 성공률 85.0%) | 전 엔딩 도달 |
 | 어떤 방법으로도 도달 못 한 엔딩 | 없음 | 없음 |
-| 일반 정책 분포에 나온 엔딩 종류 | 37 / 48 | — |
-| 최다 엔딩 점유율 (일반) | 재상 19.5%  | ≤ 20% |
-| 월평균 이벤트 (일반 / seek) | 1.53 / 1.56 | ≈ 1.5 |
-| 무이벤트 달 비율 · 2달 연속 무이벤트 겪은 판 | 17.3% · 0.0% (최장 1달) | 연속 2달 금지 |
+| 일반 정책 분포에 나온 엔딩 종류 | 37 / 49 | — |
+| 최다 엔딩 점유율 (일반) | 재상 17.2%  | ≤ 20% |
+| 월평균 이벤트 (일반 / seek) | 1.54 / 1.58 | ≈ 1.5 |
+| 무이벤트 달 비율 · 2달 연속 무이벤트 겪은 판 | 17.1% · 0.0% (최장 1달) | 연속 2달 금지 |
 | 이벤트 커버리지 | 450 / 450 (미등장 0) | 전부 등장 |
-| 게임당 거부 · 강행 · 탈진 · 자율 슬롯 (일반) | 9.5 · 6.4 · 3.04 · 16.4 | — |
-| 게임당 거부 · 강행 · 탈진 · 자율 슬롯 (seek) | 10.4 · 0.1 · 0.00 · 4.3 | — |
+| 게임당 거부 · 강행 · 탈진 · 자율 슬롯 (일반) | 9.4 · 6.2 · 3.04 · 16.3 | — |
+| 게임당 거부 · 강행 · 탈진 · 자율 슬롯 (seek) | 4.8 · 0.9 · 0.04 · 13.9 | — |
 
 판정: ✅ seek 성공률 ≥ 50% · 🟡 1~49% · 🟠 seek 0%지만 일반 플레이에서 나옴 · ❌ 도달 못 함. seek 성공률은 "목표를 알고 노리는 플레이어"의 하한 추정이다 (휴리스틱 정책이므로 0%가 곧 불가능은 아니지만, 원인 칸이 막힌 지점을 가리킨다).
 
@@ -25,113 +25,114 @@
 
 | | 엔딩 | id | 분류 | seek 성공 | 일반 N판 등장 | 실패 주원인 (seek 실패 판 기준) |
 |---|---|---|---|---|---|---|
-| — | 여왕 | `queen` | 왕실/정치 | — | 227 (11.3%) |  |
-| — | 공작부인 | `duchess` | 왕실/정치 | — | 6 (0.3%) |  |
-| — | 외교관 | `diplomat` | 왕실/정치 | — | 114 (5.7%) |  |
-| — | 재상 | `chancellor` | 왕실/정치 | — | 390 (19.5%) |  |
-| — | 근위기사단장 | `guard_captain` | 무예 | — | 27 (1.4%) |  |
-| — | 용병왕 | `mercenary_king` | 무예 | — | 268 (13.4%) |  |
-| — | 모험가 | `adventurer` | 무예 | — | 11 (0.5%) |  |
-| — | 현상금 사냥꾼 | `bounty_hunter` | 무예 | — | 0 (0.0%) |  |
-| — | 대마법사 | `archmage` | 학문/마법 | — | 0 (0.0%) |  |
-| — | 왕실학자 | `royal_scholar` | 학문/마법 | — | 1 (0.1%) |  |
-| — | 연금술사 | `alchemist` | 학문/마법 | — | 0 (0.0%) |  |
-| — | 약초의사 | `herb_doctor` | 학문/마법 | — | 0 (0.0%) |  |
-| — | 궁정악사 | `court_musician` | 예술/문화 | — | 165 (8.3%) |  |
-| — | 극단 스타 | `stage_star` | 예술/문화 | — | 10 (0.5%) |  |
-| — | 화가 | `painter` | 예술/문화 | — | 5 (0.3%) |  |
-| — | 작가 | `writer` | 예술/문화 | — | 1 (0.1%) |  |
-| — | 대상인 | `merchant_lord` | 생활/상업 | — | 10 (0.5%) |  |
-| — | 농장주 | `farm_owner` | 생활/상업 | — | 18 (0.9%) |  |
-| — | 요리사 | `chef` | 생활/상업 | — | 12 (0.6%) |  |
-| — | 여관 주인 | `innkeeper` | 생활/상업 | — | 2 (0.1%) |  |
-| — | 대주교 | `archbishop` | 신앙 | — | 0 (0.0%) |  |
-| — | 성녀 | `saint` | 신앙 | — | 174 (8.7%) |  |
-| — | 순례자 | `pilgrim` | 신앙 | — | 0 (0.0%) |  |
-| — | 암살자 | `assassin` | 어둠 | — | 0 (0.0%) |  |
-| — | 도적단 두목 | `bandit_boss` | 어둠 | — | 165 (8.3%) |  |
-| — | 사기꾼 | `swindler` | 어둠 | — | 0 (0.0%) |  |
-| — | 왕자와의 결혼 | `royal_wedding` | 관계 | — | 7 (0.4%) |  |
-| — | 가족 | `family_home` | 관계 | — | 0 (0.0%) |  |
-| — | 떠도는 사람 | `drifter` | 관계 | — | 0 (0.0%) |  |
-| — | 별의 여신 (히든) | `star_goddess` | 히든 | — | 23 (1.1%) |  |
-| — | 세계 여행자 (히든) | `world_traveler` | 히든 | — | 56 (2.8%) |  |
-| — | 시간 역행 (히든) | `time_reverse` | 히든 | — | 1 (0.1%) |  |
-| — | 선장 | `ship_captain` | 무예 | — | 22 (1.1%) |  |
-| ✅ | 편력 기사 | `knight_errant` | 무예 | 19/24 (79%) | 4 (0.2%) | 게이트 flag.knight_oath_wander 5/5 → 대신 mercenary_king 4, astronomer 1 |
-| — | 무희 | `prima_dancer` | 예술/문화 | — | 15 (0.8%) |  |
-| — | 의상 명인 | `tailor_master` | 예술/문화 | — | 21 (1.1%) |  |
-| — | 명장 대장장이 | `master_smith` | 생활/상업 | — | 7 (0.4%) |  |
-| — | 마을 선생님 | `village_teacher` | 생활/상업 | — | 30 (1.5%) |  |
-| — | 천문학자 | `astronomer` | 학문/마법 | — | 16 (0.8%) |  |
-| — | 고아원 원장 | `orphanage_head` | 신앙 | — | 56 (2.8%) |  |
-| — | 왕실 첩보원 | `royal_spy` | 어둠 | — | 2 (0.1%) |  |
-| — | 영매 | `medium` | 어둠 | — | 14 (0.7%) |  |
-| — | 평생의 라이벌 | `rival_partner` | 관계 | — | 40 (2.0%) |  |
-| — | 어머니와의 재회 (히든) | `mother_reunion` | 히든 | — | 12 (0.6%) |  |
-| — | 용의 친구 (히든) | `dragon_friend` | 히든 | — | 30 (1.5%) |  |
-| — | 큐브의 정체 (히든) | `cube_true_form` | 히든 | — | 24 (1.2%) |  |
-| — | 보호자의 뒤를 잇다 (히든) | `guardian_successor` | 히든 | — | 14 (0.7%) |  |
-| — | 자매들 (히든) | `legacy_sisters` | 히든 | — | 0 (0.0%) |  |
+| ✅ | 여왕 | `queen` | 왕실/정치 | 24/24 (100%) | 226 (11.3%) |  |
+| ✅ | 공작부인 | `duchess` | 왕실/정치 | 24/24 (100%) | 8 (0.4%) |  |
+| ✅ | 외교관 | `diplomat` | 왕실/정치 | 23/24 (96%) | 165 (8.3%) | 점수 역전 chancellor 1/1 → 대신 chancellor 1 |
+| ✅ | 재상 | `chancellor` | 왕실/정치 | 24/24 (100%) | 343 (17.2%) |  |
+| ✅ | 근위기사단장 | `guard_captain` | 무예 | 24/24 (100%) | 18 (0.9%) |  |
+| ✅ | 용병왕 | `mercenary_king` | 무예 | 24/24 (100%) | 290 (14.5%) |  |
+| ✅ | 모험가 | `adventurer` | 무예 | 24/24 (100%) | 6 (0.3%) |  |
+| 🟡 | 현상금 사냥꾼 | `bounty_hunter` | 무예 | 11/24 (46%) | 1 (0.1%) | 점수 역전 mercenary_king 7/13; 점수 역전 bandit_boss 3/13 → 대신 mercenary_king 7, bandit_boss 3 |
+| ✅ | 대마법사 | `archmage` | 학문/마법 | 21/24 (88%) | 0 (0.0%) | 게이트 flag.magic_awake 3/3 → 대신 royal_scholar 1, astronomer 1 |
+| ✅ | 왕실학자 | `royal_scholar` | 학문/마법 | 24/24 (100%) | 7 (0.4%) |  |
+| ✅ | 연금술사 | `alchemist` | 학문/마법 | 17/24 (71%) | 0 (0.0%) | 점수 역전 archmage 2/7; 점수 역전 chancellor 2/7 → 대신 chancellor 2, archmage 2 |
+| ✅ | 약초의사 | `herb_doctor` | 학문/마법 | 24/24 (100%) | 2 (0.1%) |  |
+| ✅ | 궁정악사 | `court_musician` | 예술/문화 | 24/24 (100%) | 174 (8.7%) |  |
+| ✅ | 극단 스타 | `stage_star` | 예술/문화 | 24/24 (100%) | 8 (0.4%) |  |
+| ✅ | 화가 | `painter` | 예술/문화 | 20/24 (83%) | 1 (0.1%) | 점수 역전 court_musician 4/4 → 대신 court_musician 4 |
+| ✅ | 작가 | `writer` | 예술/문화 | 24/24 (100%) | 0 (0.0%) |  |
+| ✅ | 대상인 | `merchant_lord` | 생활/상업 | 24/24 (100%) | 6 (0.3%) |  |
+| ✅ | 농장주 | `farm_owner` | 생활/상업 | 24/24 (100%) | 18 (0.9%) |  |
+| ✅ | 요리사 | `chef` | 생활/상업 | 23/24 (96%) | 10 (0.5%) | 점수 역전 court_musician 1/1 → 대신 court_musician 1 |
+| ✅ | 여관 주인 | `innkeeper` | 생활/상업 | 24/24 (100%) | 0 (0.0%) |  |
+| ✅ | 대주교 | `archbishop` | 신앙 | 24/24 (100%) | 0 (0.0%) |  |
+| ✅ | 성녀 | `saint` | 신앙 | 24/24 (100%) | 169 (8.5%) |  |
+| ✅ | 순례자 | `pilgrim` | 신앙 | 19/24 (79%) | 0 (0.0%) | 점수 역전 farm_owner 2/5; 점수 역전 archbishop 1/5 → 대신 farm_owner 2, painter 1 |
+| ✅ | 암살자 | `assassin` | 어둠 | 19/24 (79%) | 0 (0.0%) | 점수 역전 adventurer 3/5; 점수 역전 bandit_boss 1/5 → 대신 adventurer 3, bounty_hunter 1 |
+| ✅ | 도적단 두목 | `bandit_boss` | 어둠 | 24/24 (100%) | 165 (8.3%) |  |
+| ✅ | 사기꾼 | `swindler` | 어둠 | 24/24 (100%) | 0 (0.0%) |  |
+| ✅ | 왕자와의 결혼 | `royal_wedding` | 관계 | 19/24 (79%) | 7 (0.4%) | 게이트 flag.leon_love 3/5; 점수 역전 court_musician 2/5 → 대신 court_musician 3, chef 1 |
+| ✅ | 가족 | `family_home` | 관계 | 18/24 (75%) | 0 (0.0%) | 점수 역전 court_musician 4/6; 점수 역전 farm_owner 1/6 → 대신 court_musician 4, farm_owner 1 |
+| ✅ | 떠도는 사람 | `drifter` | 관계 | 16/24 (67%) | 0 (0.0%) | 점수 역전 court_musician 4/8; 점수 역전 adventurer 3/8 → 대신 court_musician 4, adventurer 3 |
+| ✅ | 별의 여신 (히든) | `star_goddess` | 히든 | 19/24 (79%) | 10 (0.5%) | 게이트 flag.tower_choice_hers 5/5 → 대신 medium 2, archmage 1 |
+| ✅ | 세계 여행자 (히든) | `world_traveler` | 히든 | 24/24 (100%) | 69 (3.5%) |  |
+| ✅ | 시간 역행 (히든) | `time_reverse` | 히든 | 24/24 (100%) | 1 (0.1%) |  |
+| ✅ | 선장 | `ship_captain` | 무예 | 18/24 (75%) | 20 (1.0%) | 게이트 flag.sea_path 6/6 → 대신 adventurer 6 |
+| ✅ | 편력 기사 | `knight_errant` | 무예 | 15/24 (63%) | 14 (0.7%) | 게이트 flag.knight_oath_wander 9/9 → 대신 mercenary_king 7, guard_captain 1 |
+| ✅ | 무희 | `prima_dancer` | 예술/문화 | 18/24 (75%) | 11 (0.5%) | 게이트 flag.prima_debut 6/6 → 대신 stage_star 3, adventurer 2 |
+| ✅ | 의상 명인 | `tailor_master` | 예술/문화 | 16/24 (67%) | 23 (1.1%) | 게이트 flag.fashion_show 8/8 → 대신 court_musician 8 |
+| ✅ | 명장 대장장이 | `master_smith` | 생활/상업 | 16/24 (67%) | 7 (0.4%) | 게이트 flag.masterwork 8/8 → 대신 mercenary_king 4, guard_captain 3 |
+| ✅ | 마을 선생님 | `village_teacher` | 생활/상업 | 19/24 (79%) | 32 (1.6%) | 게이트 flag.teacher_offer 5/5 → 대신 court_musician 4, chancellor 1 |
+| ✅ | 천문학자 | `astronomer` | 학문/마법 | 18/24 (75%) | 19 (0.9%) | 게이트 flag.star_charts 6/6 → 대신 writer 3, royal_scholar 1 |
+| ✅ | 고아원 원장 | `orphanage_head` | 신앙 | 21/24 (88%) | 44 (2.2%) | 게이트 flag.orphanage_vow 3/3 → 대신 court_musician 2, chef 1 |
+| ✅ | 왕실 첩보원 | `royal_spy` | 어둠 | 17/24 (71%) | 12 (0.6%) | 게이트 flag.spy_recruited 7/7 → 대신 diplomat 2, chancellor 2 |
+| ✅ | 영매 | `medium` | 어둠 | 24/24 (100%) | 10 (0.5%) |  |
+| ✅ | 평생의 라이벌 | `rival_partner` | 관계 | 18/24 (75%) | 47 (2.4%) | 게이트 flag.theodora_pact 6/6 → 대신 duchess 2, chancellor 2 |
+| ✅ | 어머니와의 재회 (히든) | `mother_reunion` | 히든 | 19/24 (79%) | 8 (0.4%) | 게이트 flag.mother_alive 5/5; 게이트 flag.mother_found 5/5 → 대신 queen 2, court_musician 1 |
+| ✅ | 용의 친구 (히든) | `dragon_friend` | 히든 | 17/24 (71%) | 15 (0.8%) | 게이트 flag.dragon_hatched 7/7; 게이트 flag.dragon_egg 2/7 → 대신 adventurer 3, guard_captain 2 |
+| ✅ | 큐브의 정체 (히든) | `cube_true_form` | 히든 | 21/24 (88%) | 19 (0.9%) | 게이트 flag.cube_secret_2 3/3; 게이트 flag.cube_secret_1 1/3 → 대신 saint 2, orphanage_head 1 |
+| ✅ | 보호자의 뒤를 잇다 (히든) | `guardian_successor` | 히든 | 14/24 (58%) | 15 (0.8%) | 게이트 flag.guardian_name_cleared 10/10; 게이트 flag.guardian_past_revealed 3/10 → 대신 archbishop 8, saint 2 |
+| ✅ | 자매들 (히든) | `legacy_sisters` | 히든 | 22/24 (92%) | 0 (0.0%) | 게이트 flag.star_watching 2/2 → 대신 diplomat 1, court_musician 1 |
+| 🟡 | 평범한 나날 | `ordinary_days` | 생활/상업 | 2/24 (8%) | 0 (0.0%) | 점수 역전 innkeeper 5/22; 점수 역전 herb_doctor 3/22 → 대신 innkeeper 5, herb_doctor 3 |
 
 ## 2. 엔딩 분포 (일반 정책 10종)
 
 | 순위 | 엔딩 | id | 판 수 | 점유율 | |
 |---|---|---|---|---|---|
-| 1 | 재상 | `chancellor` | 390 | 19.5% | ██████████ |
-| 2 | 용병왕 | `mercenary_king` | 268 | 13.4% | ███████ |
-| 3 | 여왕 | `queen` | 227 | 11.3% | ██████ |
-| 4 | 성녀 | `saint` | 174 | 8.7% | ████ |
-| 5 | 궁정악사 | `court_musician` | 165 | 8.3% | ████ |
-| 6 | 도적단 두목 | `bandit_boss` | 165 | 8.3% | ████ |
-| 7 | 외교관 | `diplomat` | 114 | 5.7% | ███ |
-| 8 | 세계 여행자 | `world_traveler` | 56 | 2.8% | █ |
-| 9 | 고아원 원장 | `orphanage_head` | 56 | 2.8% | █ |
-| 10 | 평생의 라이벌 | `rival_partner` | 40 | 2.0% | █ |
-| 11 | 마을 선생님 | `village_teacher` | 30 | 1.5% | █ |
-| 12 | 용의 친구 | `dragon_friend` | 30 | 1.5% | █ |
-| 13 | 근위기사단장 | `guard_captain` | 27 | 1.4% | █ |
-| 14 | 큐브의 정체 | `cube_true_form` | 24 | 1.2% | █ |
-| 15 | 별의 여신 | `star_goddess` | 23 | 1.1% | █ |
-| 16 | 선장 | `ship_captain` | 22 | 1.1% | █ |
-| 17 | 의상 명인 | `tailor_master` | 21 | 1.1% | █ |
-| 18 | 농장주 | `farm_owner` | 18 | 0.9% |  |
-| 19 | 천문학자 | `astronomer` | 16 | 0.8% |  |
-| 20 | 무희 | `prima_dancer` | 15 | 0.8% |  |
-| 21 | 영매 | `medium` | 14 | 0.7% |  |
-| 22 | 보호자의 뒤를 잇다 | `guardian_successor` | 14 | 0.7% |  |
-| 23 | 요리사 | `chef` | 12 | 0.6% |  |
-| 24 | 어머니와의 재회 | `mother_reunion` | 12 | 0.6% |  |
-| 25 | 모험가 | `adventurer` | 11 | 0.5% |  |
-| 26 | 극단 스타 | `stage_star` | 10 | 0.5% |  |
-| 27 | 대상인 | `merchant_lord` | 10 | 0.5% |  |
-| 28 | 왕자와의 결혼 | `royal_wedding` | 7 | 0.4% |  |
-| 29 | 명장 대장장이 | `master_smith` | 7 | 0.4% |  |
-| 30 | 공작부인 | `duchess` | 6 | 0.3% |  |
-| 31 | 화가 | `painter` | 5 | 0.3% |  |
-| 32 | 편력 기사 | `knight_errant` | 4 | 0.2% |  |
-| 33 | 여관 주인 | `innkeeper` | 2 | 0.1% |  |
-| 34 | 왕실 첩보원 | `royal_spy` | 2 | 0.1% |  |
-| 35 | 왕실학자 | `royal_scholar` | 1 | 0.1% |  |
-| 36 | 작가 | `writer` | 1 | 0.1% |  |
+| 1 | 재상 | `chancellor` | 343 | 17.2% | █████████ |
+| 2 | 용병왕 | `mercenary_king` | 290 | 14.5% | ███████ |
+| 3 | 여왕 | `queen` | 226 | 11.3% | ██████ |
+| 4 | 궁정악사 | `court_musician` | 174 | 8.7% | ████ |
+| 5 | 성녀 | `saint` | 169 | 8.5% | ████ |
+| 6 | 외교관 | `diplomat` | 165 | 8.3% | ████ |
+| 7 | 도적단 두목 | `bandit_boss` | 165 | 8.3% | ████ |
+| 8 | 세계 여행자 | `world_traveler` | 69 | 3.5% | ██ |
+| 9 | 평생의 라이벌 | `rival_partner` | 47 | 2.4% | █ |
+| 10 | 고아원 원장 | `orphanage_head` | 44 | 2.2% | █ |
+| 11 | 마을 선생님 | `village_teacher` | 32 | 1.6% | █ |
+| 12 | 의상 명인 | `tailor_master` | 23 | 1.1% | █ |
+| 13 | 선장 | `ship_captain` | 20 | 1.0% | █ |
+| 14 | 천문학자 | `astronomer` | 19 | 0.9% |  |
+| 15 | 큐브의 정체 | `cube_true_form` | 19 | 0.9% |  |
+| 16 | 근위기사단장 | `guard_captain` | 18 | 0.9% |  |
+| 17 | 농장주 | `farm_owner` | 18 | 0.9% |  |
+| 18 | 용의 친구 | `dragon_friend` | 15 | 0.8% |  |
+| 19 | 보호자의 뒤를 잇다 | `guardian_successor` | 15 | 0.8% |  |
+| 20 | 편력 기사 | `knight_errant` | 14 | 0.7% |  |
+| 21 | 왕실 첩보원 | `royal_spy` | 12 | 0.6% |  |
+| 22 | 무희 | `prima_dancer` | 11 | 0.5% |  |
+| 23 | 요리사 | `chef` | 10 | 0.5% |  |
+| 24 | 별의 여신 | `star_goddess` | 10 | 0.5% |  |
+| 25 | 영매 | `medium` | 10 | 0.5% |  |
+| 26 | 공작부인 | `duchess` | 8 | 0.4% |  |
+| 27 | 극단 스타 | `stage_star` | 8 | 0.4% |  |
+| 28 | 어머니와의 재회 | `mother_reunion` | 8 | 0.4% |  |
+| 29 | 왕실학자 | `royal_scholar` | 7 | 0.4% |  |
+| 30 | 왕자와의 결혼 | `royal_wedding` | 7 | 0.4% |  |
+| 31 | 명장 대장장이 | `master_smith` | 7 | 0.4% |  |
+| 32 | 모험가 | `adventurer` | 6 | 0.3% |  |
+| 33 | 대상인 | `merchant_lord` | 6 | 0.3% |  |
+| 34 | 약초의사 | `herb_doctor` | 2 | 0.1% |  |
+| 35 | 현상금 사냥꾼 | `bounty_hunter` | 1 | 0.1% |  |
+| 36 | 화가 | `painter` | 1 | 0.1% |  |
 | 37 | 시간 역행 | `time_reverse` | 1 | 0.1% |  |
 
-일반 정책에서 한 번도 안 나온 엔딩 (11): `bounty_hunter`, `archmage`, `alchemist`, `herb_doctor`, `archbishop`, `pilgrim`, `assassin`, `swindler`, `family_home`, `drifter`, `legacy_sisters`
+일반 정책에서 한 번도 안 나온 엔딩 (12): `archmage`, `alchemist`, `writer`, `innkeeper`, `archbishop`, `pilgrim`, `assassin`, `swindler`, `family_home`, `drifter`, `legacy_sisters`, `ordinary_days`
 
 ### 정책별 지표
 
 | 정책 | 판 | 상위 엔딩 | 거부 | 강행 | 설득 성공 | 탈진 | 자율 슬롯 | 이벤트/월 | 최종 신뢰 | 연간 결정 | 구매 |
 |---|---|---|---|---|---|---|---|---|---|---|---|
-| random | 200 | 외교관 76, 재상 40, 평생의 라이벌 17 | 0.3 | 0.1 | 0.1 | 0.03 | 11.6 | 1.53 | 99.2 | 7.0 | 8.8 |
-| focus_body | 200 | 용병왕 157, 용의 친구 26, 모험가 11 | 27.1 | 9.2 | 3.4 | 0.54 | 2.9 | 1.52 | 91.4 | 7.0 | 15.7 |
-| focus_mind | 200 | 재상 147, 큐브의 정체 24, 별의 여신 23 | 0.8 | 0.3 | 0.2 | 0.21 | 2.5 | 1.52 | 99.2 | 7.0 | 5.3 |
-| focus_social | 200 | 여왕 193, 공작부인 4, 평생의 라이벌 3 | 0.1 | 0.0 | 0.0 | 0.03 | 2.7 | 1.51 | 99.4 | 7.0 | 12.3 |
-| focus_inner | 200 | 성녀 174, 의상 명인 17, 보호자의 뒤를 잇다 9 | 0.1 | 0.0 | 0.0 | 0.00 | 3.0 | 1.54 | 99.3 | 7.0 | 10.4 |
-| balanced | 200 | 용병왕 80, 여왕 34, 근위기사단장 20 | 2.1 | 0.6 | 0.4 | 0.01 | 0.0 | 1.51 | 98.9 | 7.0 | 3.5 |
-| hands_off | 200 | 세계 여행자 55, 궁정악사 54, 재상 20 | 0.0 | 0.0 | 0.0 | 0.00 | 100.2 | 1.54 | 99.7 | 7.0 | 6.9 |
-| tyrant | 200 | 재상 181, 외교관 17, 용병왕 2 | 48.1 | 48.1 | 0.0 | 28.50 | 0.0 | 1.49 | 12.8 | 7.0 | 0.3 |
-| shadow | 200 | 도적단 두목 165, 용병왕 29, 대상인 5 | 16.2 | 5.5 | 3.7 | 1.10 | 0.0 | 1.58 | 98.6 | 7.0 | 16.8 |
-| nurture | 200 | 궁정악사 92, 고아원 원장 56, 마을 선생님 30 | 0.0 | 0.0 | 0.0 | 0.00 | 40.7 | 1.58 | 99.9 | 7.0 | 7.3 |
+| random | 200 | 외교관 81, 재상 30, 평생의 라이벌 21 | 0.5 | 0.2 | 0.1 | 0.07 | 11.5 | 1.54 | 99.1 | 7.0 | 8.8 |
+| focus_body | 200 | 용병왕 175, 용의 친구 14, 명장 대장장이 6 | 26.9 | 8.9 | 3.6 | 0.58 | 2.7 | 1.52 | 92.5 | 7.0 | 15.9 |
+| focus_mind | 200 | 재상 169, 큐브의 정체 19, 별의 여신 10 | 0.9 | 0.3 | 0.2 | 0.14 | 2.4 | 1.52 | 99.4 | 7.0 | 5.4 |
+| focus_social | 200 | 여왕 195, 공작부인 5 | 0.1 | 0.0 | 0.0 | 0.04 | 2.6 | 1.52 | 99.3 | 7.0 | 12.1 |
+| focus_inner | 200 | 성녀 166, 의상 명인 20, 보호자의 뒤를 잇다 14 | 0.1 | 0.0 | 0.0 | 0.00 | 3.1 | 1.55 | 99.2 | 7.0 | 10.6 |
+| balanced | 200 | 용병왕 83, 여왕 30, 궁정악사 16 | 1.7 | 0.6 | 0.4 | 0.01 | 0.0 | 1.51 | 99.1 | 7.0 | 3.8 |
+| hands_off | 200 | 세계 여행자 68, 궁정악사 41, 외교관 17 | 0.0 | 0.0 | 0.0 | 0.00 | 100.3 | 1.53 | 99.4 | 7.0 | 6.8 |
+| tyrant | 200 | 재상 133, 외교관 61, 왕실 첩보원 4 | 47.1 | 47.1 | 0.0 | 28.48 | 0.0 | 1.51 | 11.9 | 7.0 | 0.3 |
+| shadow | 200 | 도적단 두목 165, 용병왕 30, 대상인 4 | 16.4 | 5.4 | 3.8 | 1.11 | 0.0 | 1.59 | 98.7 | 7.0 | 16.8 |
+| nurture | 200 | 궁정악사 99, 고아원 원장 44, 마을 선생님 31 | 0.0 | 0.0 | 0.0 | 0.00 | 40.5 | 1.60 | 100.0 | 7.0 | 7.3 |
 
 ## 3. 이벤트 밀도
 
@@ -139,12 +140,12 @@
 
 | 나이 | 10 | 11 | 12 | 13 | 14 | 15 | 16 | 17 | 전체 |
 |---|---|---|---|---|---|---|---|---|---|
-| 일반 이벤트/월 | 1.54 | 1.46 | 1.49 | 1.46 | 1.53 | 1.52 | 1.57 | 1.69 | **1.53** |
-| seek 이벤트/월 | 1.67 | 1.55 | 1.49 | 1.46 | 1.51 | 1.55 | 1.59 | 1.68 | **1.56** |
+| 일반 이벤트/월 | 1.54 | 1.46 | 1.56 | 1.46 | 1.53 | 1.52 | 1.56 | 1.67 | **1.54** |
+| seek 이벤트/월 | 1.61 | 1.49 | 1.55 | 1.49 | 1.57 | 1.57 | 1.61 | 1.75 | **1.58** |
 
-- 무이벤트 달: 일반 17.3% (2달 연속을 겪은 판 0.0%, 최장 1달) · seek 16.8% (최장 1달)
+- 무이벤트 달: 일반 17.1% (2달 연속을 겪은 판 0.0%, 최장 1달) · seek 17.0% (최장 1달)
 - 연쇄 순환 보호(한 달 20건 초과) 발동: 일반 0회 · seek 0회
-- seek가 미니게임 점수(0.7)를 쓴 판정: 판당 3.3회
+- seek가 미니게임 점수(0.7)를 쓴 판정: 판당 3.5회
 
 ## 4. 이벤트 커버리지 — 미등장 0개 / 전체 450개
 
@@ -154,58 +155,55 @@
 
 ### 2회차 이상 표본에서만 나온 이벤트 (회차 조건 · 해금 보호자 출신 전용)
 
-`b06_merchant_loan` (b06_guardian.js, 29판) · `b06_merchant_haggle` (b06_guardian.js, 35판) · `b06_priest_firewood` (b06_guardian.js, 30판) · `b06_priest_rites` (b06_guardian.js, 30판) · `b06_adv_map` (b06_guardian.js, 34판) · `b06_adv_reunion` (b06_guardian.js, 31판) · `b14_doorframe` (b14_legacy.js, 156판) · `b14_lullaby` (b14_legacy.js, 122판) · `b14_recipe_card` (b14_legacy.js, 152판) · `b14_same_question` (b14_legacy.js, 125판) · `b14_elda_slip` (b14_legacy.js, 99판) · `b14_cube_counts` (b14_legacy.js, 126판) · `b14_known_trail` (b14_legacy.js, 37판) · `b14_trail_cache` (b14_legacy.js, 15판) · `b14_familiar_face` (b14_legacy.js, 172판) · `b14_her_tea` (b14_legacy.js, 124판) · `b14_her_keepsake` (b14_legacy.js, 124판) · `b14_dream_life` (b14_legacy.js, 79판) · `b14_floor_box` (b14_legacy.js, 49판) · `b14_borrowed_name` (b14_legacy.js, 104판) · `b14_guardian_dream` (b14_legacy.js, 108판) · `b14_sisters_letter` (b14_legacy.js, 108판) · `b14_sisters_field` (b14_legacy.js, 86판) · `b14_sisters_dawn` (b14_legacy.js, 86판) · `b14_extra_stars` (b14_legacy.js, 84판)
+`b06_merchant_loan` (b06_guardian.js, 30판) · `b06_merchant_haggle` (b06_guardian.js, 36판) · `b06_priest_firewood` (b06_guardian.js, 22판) · `b06_priest_rites` (b06_guardian.js, 35판) · `b06_adv_map` (b06_guardian.js, 30판) · `b06_adv_reunion` (b06_guardian.js, 34판) · `b14_trail_cache` (b14_legacy.js, 15판) · `b14_floor_box` (b14_legacy.js, 39판)
 
 ### 드물게 나온 이벤트 (반복 불가 이벤트 중 등장 판 비율 하위)
 
 | 이벤트 | 파일 | 등장 판 비율 |
 |---|---|---|
-| `b04a_smith_second_fire` | b04a_careers_body_art.js | 0.04% |
-| `b12_two_reports` | b12_shadows.js | 0.49% |
-| `b14_trail_cache` | b14_legacy.js | 0.67% |
-| `b07_bounty_fox` | b07_adventure.js | 0.99% |
-| `b12_false_pedigree` | b12_shadows.js | 1.08% |
-| `b13_cube_book` | b13_mysteries.js | 1.21% |
-| `b06_merchant_loan` | b06_guardian.js | 1.30% |
-| `b06_priest_firewood` | b06_guardian.js | 1.35% |
-| `b06_priest_rites` | b06_guardian.js | 1.35% |
-| `b07_dragon_sky` | b07_adventure.js | 1.35% |
-| `b06_adv_reunion` | b06_guardian.js | 1.39% |
-| `b07_ruins_deep` | b07_adventure.js | 1.48% |
+| `b04a_smith_second_fire` | b04a_careers_body_art.js | 0.27% |
+| `b14_trail_cache` | b14_legacy.js | 0.44% |
+| `b06_priest_firewood` | b06_guardian.js | 0.65% |
+| `b12_two_reports` | b12_shadows.js | 0.77% |
+| `b06_adv_map` | b06_guardian.js | 0.89% |
+| `b06_merchant_loan` | b06_guardian.js | 0.89% |
+| `b07_treasure_split` | b07_adventure.js | 0.95% |
+| `b06_adv_reunion` | b06_guardian.js | 1.01% |
+| `b06_priest_rites` | b06_guardian.js | 1.04% |
+| `b06_merchant_haggle` | b06_guardian.js | 1.07% |
+| `b07_dragon_sky` | b07_adventure.js | 1.13% |
+| `b14_floor_box` | b14_legacy.js | 1.16% |
 
-### 선택지 커버리지 공백 (27건)
+### 선택지 커버리지 공백 (24건)
 
 등장한 이벤트 중 한 번도 고르지 않은 선택지, 또는 20회 이상 골랐는데 판정이 한쪽으로만 나온 선택지.
 
 | 이벤트 | 선택지 | 내용 |
 |---|---|---|
 | `b01_lie_amends` | 3. 장부에 빚을 적게 한다 | 선택된 적 없음 (조건 guardian == 'merchant') |
-| `b02_star_rumor` | 4. 숨기라던 말을 거둔다 | 선택된 적 없음 (조건 flag.magic_hidden) |
-| `b04a_smith_second_fire` | 1. 작은 단검을 벼린다 | 선택된 적 없음 |
-| `b04a_smith_second_fire` | 3. 이제 그만 쉬자 | 선택된 적 없음 |
-| `b04a_smith_second_fire` | 4. 처음 별철을 안던 날처럼 | 선택된 적 없음 (조건 flag.b04a_star_blessed) |
+| `b03_diary_noticed` | 4. 편지 일까지 꺼내 사과한다 | 선택된 적 없음 (조건 seen.secret_letter_confront >= 1) |
+| `b03_far_letter` | 1. 이 집도 넣어 달라고 한다 | 판정 실패 0/22 (dc 145) |
+| `b04a_cook_banquet` | 4. 성당 배식 솜씨를 보탠다 | 선택된 적 없음 (조건 guardian == 'priest') |
 | `b04b_pilgrim_blister` | 4. 산길 지름길을 그려 보낸다 | 선택된 적 없음 (조건 guardian == 'adventurer') |
-| `b05_doubt_receipt` | 4. 계약서 조항을 함께 따진다 | 선택된 적 없음 (조건 guardian == 'merchant') |
-| `b05_north_again` | 2. 근위대 문장으로 역마차를 얻는다 | 선택된 적 없음 (조건 flag.b05_royal_token) |
-| `b06_name_evidence` | 4. 물려받은 지도를 펼친다 | 선택된 적 없음 (조건 flag.b06_map_given) |
-| `b07_ruins_deep` | 1. 횃불을 들고 내려간다 | 판정 실패 0/22 (dc 210) |
+| `b07_fog_lost` | 4. 옛 신호 휘파람을 분다 | 선택된 적 없음 (조건 guardian == 'adventurer') |
 | `b07_ruins_deep` | 3. 미라를 불러 함께 간다 | 선택된 적 없음 (조건 flag.b07_mira) |
+| `b07_secret_boots` | 4. 내 첫 장화 이야기를 한다 | 선택된 적 없음 (조건 guardian == 'adventurer') |
 | `b07_guild_board` | 4. 닳은 은패를 내민다 | 선택된 적 없음 (조건 guardian == 'adventurer') |
-| `b07_cairn_journal` | 4. 모험가의 작별 인사를 한다 | 선택된 적 없음 (조건 guardian == 'adventurer') |
-| `b07_blizzard_pass` | 3. 다 함께 밤을 버틴다 | 판정 실패 0/24 (dc 150) |
-| `b07_adventurer_road` | 4. 낡은 나침반을 물려준다 | 선택된 적 없음 (조건 guardian == 'adventurer') |
-| `b08_diner_market` | 4. 옛 거래처 어부를 찾아가렴 | 선택된 적 없음 (조건 guardian == 'merchant') |
-| `b09_garrett_footwork` | 3. 산길을 같이 걷자 | 선택된 적 없음 (조건 guardian == 'adventurer') |
+| `b08_night_mud` | 4. 축복한 등불을 들려 보낸다 | 선택된 적 없음 (조건 guardian == 'priest') |
+| `b09_tower_candles` | 4. 아델에게 입단속을 부탁한다 | 선택된 적 없음 (조건 flag.magic_hidden) |
 | `b09_theo_question` | 3. 사제였던 당신이 답한다 | 선택된 적 없음 (조건 guardian == 'priest') |
-| `b09_commerce_ledger` | 4. 길드장에게 직접 가져간다 | 선택된 적 없음 (조건 flag.b09_guild_visit) |
+| `b09_mock_market` | 4. 옛 거래처를 귀띔해 준다 | 선택된 적 없음 (조건 guardian == 'merchant') |
+| `b10_snow_letter_again` | 2. 아이 편지를 같이 읽는다 | 선택된 적 없음 |
 | `b10_snow_letter_again` | 4. 어디서든 부쳐 달라고 한다 | 선택된 적 없음 (조건 age >= 16) |
-| `b10_summer_porch` | 4. 짧은 밤 기도를 가르친다 | 선택된 적 없음 (조건 guardian == 'priest') |
-| `b11_leon_court_dinner` | 4. 상인의 눈으로 귀띔한다 | 선택된 적 없음 (조건 guardian == 'merchant') |
+| `b10_halo_cat` | 4. 고양이와 눈인사를 가르친다 | 선택된 적 없음 (조건 guardian == 'adventurer') |
+| `b10_market_stall` | 4. 첫 손님 끄는 법을 일러 준다 | 선택된 적 없음 (조건 guardian == 'merchant', gold >= 30) |
+| `b10_market_thief` | 4. 성당 급식소를 알려 준다 | 선택된 적 없음 (조건 guardian == 'priest') |
+| `b11_leon_friend_letter` | 4. 테오도라와 함께 간다 | 선택된 적 없음 (조건 flag.b11_trio) |
 | `b12_bell_coat` | 4. 참새단을 성당 급식소로 부른다 | 선택된 적 없음 (조건 guardian == 'priest') |
-| `b12_two_reports` | 4. 로웬에게 셋째 달로 오라고 한다 | 선택된 적 없음 (조건 flag.b12_rowen_talk) |
 | `b13_cube_book` | 4. 부엌에서 부른 그 노래를 청한다 | 선택된 적 없음 (조건 flag.b13_cube_sang) |
 | `b14_known_trail` | 4. 옛 모험가식으로 표식을 읽는다 | 선택된 적 없음 (조건 guardian == 'adventurer') |
 | `b14_trail_cache` | 4. 꾸러미에 남은 별빛을 읽는다 | 선택된 적 없음 (조건 stat.mag >= 150) |
+| `b14_sisters_field` | 3. 숲속 꾸러미 이야기를 꺼낸다 | 선택된 적 없음 (조건 flag.b14_left_gift) |
 
 ## 방법
 

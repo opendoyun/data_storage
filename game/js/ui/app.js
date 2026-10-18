@@ -14,7 +14,9 @@ const SETTINGS_KEY = 'starborn_settings';
 const settings = (() => { try { return { minigames: true, ...JSON.parse(localStorage.getItem(SETTINGS_KEY) || '{}') }; } catch { return { minigames: true }; } })();
 const saveSettings = () => { try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings)); } catch {} };
 const store = { getItem: (k) => { try { return localStorage.getItem(k); } catch { return null; } }, setItem: (k, v) => { try { localStorage.setItem(k, v); } catch {} }, removeItem: (k) => { try { localStorage.removeItem(k); } catch {} } };
-let meta = META ? META.loadMeta(store) : null;
+// 손상·상위 버전 기록이면 알린다 (meta.js가 원본을 백업 키에 남긴다)
+const metaRep = META ? (META.loadMetaReport?.(store) ?? { meta: META.loadMeta(store), status: 'ok' }) : null;
+let meta = metaRep?.meta ?? null;
 const callOf = (st) => GUARDIANS[st?.guardian]?.call ?? '아빠';
 // 예전 세이브 호환: v0.1 상태에 없는 필드 채우기
 function migrate(st) {
@@ -22,6 +24,14 @@ function migrate(st) {
   if (!st.persHistory.length) st.persHistory.push({ age: st.age, ...st.personality });
   return st;
 }
+// 저장 데이터 모양 확인: 손상·다른 데이터면 false (불러오기 버튼을 막고, 불러오기 시 오류 대신 안내)
+const isSaveShape = (st) => !!st && typeof st === 'object' && !!st.stats && typeof st.stats === 'object' && !!st.personality && typeof st.personality === 'object' && !!GUARDIANS[st.guardian];
+function parseSave(raw) {
+  const st = E.deserialize(raw);
+  if (!isSaveShape(st)) throw new Error('저장 데이터 형식이 아닙니다.');
+  return migrate(st);
+}
+const SAVE_BROKEN = '저장 데이터가 손상되어 불러올 수 없습니다.';
 
 const $ = (sel, el = document) => el.querySelector(sel);
 const h = (html) => { const t = document.createElement('template'); t.innerHTML = html.trim(); return t.content.firstElementChild; };
@@ -34,7 +44,10 @@ let S = null;                 // 게임 상태
 let slots = ['school', 'farm', 'rest'];
 let activeSlot = 0;
 let lastReport = null;
+let busy = false;             // 한 달 진행(거부→이벤트→결산→생일) 중: 상점·저장·타이틀·두 번째 진행을 막는다
 const app = $('#app');
+// 모달이 떠 있거나 한 달이 진행 중이면 뒤 화면(#app)을 비활성(inert): Tab·Enter로 헤더 버튼에 닿지 않게
+function syncInert() { app.inert = busy || !!document.querySelector('.modal-bg'); }
 
 // ──────────────────────────────────────────────────────────────────────
 // 자산: 있으면 이미지, 없으면 SVG/CSS 플레이스홀더
@@ -55,17 +68,14 @@ async function mountImage(container, path, fallbackHtml) {
 function renderTitle() {
   document.body.classList.remove('in-room'); delete document.body.dataset.season;
   const auto = store.getItem(AUTOSAVE);
-  let hair = 'white', eyes = 'crimson';
-  const HAIRS = { white: '#f3f3f7', silver: '#dfe3ee', gold: '#f2d16b', black: '#2b2b35', brown: '#7a4b2a', rose: '#e8a1b4' };
-  const EYESC = { crimson: '#c4303a', violet: '#8e6bd6', blue: '#4f8fd6', green: '#5cb27a', amber: '#d6953f', gray: '#8a8f9e' };
+  // 외형은 캐릭터 설계(character-design v2) 고정: 은백색 머리·붉은 눈. 본문 텍스트가 이 모습을 전제로 쓰였다.
+  const hair = 'white', eyes = 'crimson';
   app.innerHTML = '';
   const el = h(`<div class="title">
     <h1>별의 공주</h1><div class="sub">Starborn Princess · 8년, 한 아이를 키운다</div>
     <div class="form">
       <label>아이 이름</label><input id="f-name" value="루나" maxlength="8">
       <label>보호자</label><div id="f-guardian-box">${guardianSelectHtml()}</div>
-      <label>머리색</label><div class="swatches" id="f-hair">${Object.entries(HAIRS).map(([k, c]) => `<div class="swatch ${k === hair ? 'on' : ''}" data-k="${k}" style="background:${c}" title="${k}"></div>`).join('')}</div>
-      <label>눈색</label><div class="swatches" id="f-eyes">${Object.entries(EYESC).map(([k, c]) => `<div class="swatch ${k === eyes ? 'on' : ''}" data-k="${k}" style="background:${c}" title="${k}"></div>`).join('')}</div>
       <label>시드 (선택)</label><input id="f-seed" placeholder="비우면 무작위">
       <div class="full" id="f-extras" style="justify-content:stretch;display:block"></div>
       <div class="full">
@@ -78,18 +88,23 @@ function renderTitle() {
     <div class="hint">능력치 12종 · 성격 5축 · 이벤트 ${E.EVENTS.length}개 · 엔딩 ${E.ENDINGS.length}종${meta ? ` · ${(meta.runs || []).length ? `지금까지 ${(meta.runs || []).length}명의 아이` : '첫 번째 아이'}` : ''} · 아이는 가끔 당신의 계획을 거부합니다.</div>
   </div>`);
   app.appendChild(el);
-  for (const grp of ['f-hair', 'f-eyes']) $('#' + grp, el).addEventListener('click', ev => {
-    const sw = ev.target.closest('.swatch'); if (!sw) return;
-    $$('.swatch', $('#' + grp, el)).forEach(x => x.classList.remove('on')); sw.classList.add('on');
-    if (grp === 'f-hair') hair = sw.dataset.k; else eyes = sw.dataset.k;
-  });
   // 메타 진행 UI(보호자 출신 해금·시작 보너스). 모듈이 없으면 기본 선택 상자.
   let extras = null;
   if (ALBUM && meta && ALBUM.renderNewGameExtras) {
     try { extras = ALBUM.renderNewGameExtras($('#f-extras', el), meta); $('#f-guardian-box', el).closest('.form').querySelector('#f-guardian-box').previousElementSibling.style.display = 'none'; $('#f-guardian-box', el).style.display = 'none'; }
     catch (e) { console.warn(e); extras = null; }
   }
-  if ($('#b-album', el)) $('#b-album', el).onclick = () => openAlbum();
+  // 앨범에서 시작 보너스를 사고 닫으면 새 게임 패널을 지금의 메타로 다시 그린다 (고른 출신·보너스는 유지)
+  if ($('#b-album', el)) $('#b-album', el).onclick = () => openAlbum(() => {
+    if (!extras || !ALBUM?.renderNewGameExtras || !el.isConnected) return;
+    const cur = extras.getSelection?.();
+    extras.destroy?.();
+    try { extras = ALBUM.renderNewGameExtras($('#f-extras', el), meta, cur || {}); }
+    catch (e) {
+      console.warn(e); extras = null;
+      const box = $('#f-guardian-box', el); box.innerHTML = guardianSelectHtml(); box.style.display = ''; box.previousElementSibling.style.display = '';
+    }
+  });
   $('#b-new', el).onclick = () => {
     const seedRaw = $('#f-seed', el).value.trim();
     const sel = extras?.getSelection?.() ?? { guardian: $('#f-guardian', el)?.value || 'knight', bonusIds: [] };
@@ -99,10 +114,13 @@ function renderTitle() {
     slots = ['school', 'farm', 'rest'];
     renderMain();
     const g = GUARDIANS[S.guardian];
-    showModal(`<h3>별이 떨어진 밤</h3><p>세 개의 달이 겹친 밤, 들판에 빛이 떨어졌다. 빛 속에는 열 살쯤 된 아이가 잠들어 있었다. 은백색 머리카락 위로 작은 금빛이 반짝였다가 사라졌다.\n\n${esc(g.name)}였던 당신은 아이를 안고 집으로 돌아왔다. 이름은 <b>${esc(S.name)}</b>${hasBatchim(S.name) ? '이라고' : '라고'} 짓기로 했다.${S.playthrough > 1 ? `\n\n<span class="hint">${S.playthrough}번째 아이. 어딘가에서 지난 아이들의 이야기가 들려올지도 모른다.</span>` : ''}\n\n이제부터 8년. 매달 열흘 단위로 세 가지 활동을 정해 주세요. 아이는 자라고, 때로는 거부하고, 때로는 스스로 선택할 것입니다.</p>
+    showModal(`<h3>별이 떨어진 밤</h3><p>세 개의 달이 겹친 밤, 들판에 빛이 떨어졌다. 빛 속에는 열 살쯤 된 아이가 잠들어 있었다. 은백색 머리카락 위로 작은 금빛이 반짝였다가 사라졌다.\n\n${esc(josa(g.name, '이었'))}던 당신은 아이를 안고 집으로 돌아왔다. 이름은 <b>${esc(S.name)}</b>${hasBatchim(S.name) ? '이라고' : '라고'} 짓기로 했다.${S.playthrough > 1 ? `\n\n<span class="hint">${ALBUM?.ordinal ? ALBUM.ordinal(S.playthrough) : S.playthrough + '번째'} 아이. 어딘가에서 지난 아이들의 이야기가 들려올지도 모른다.</span>` : ''}\n\n이제부터 8년. 매달 열흘 단위로 세 가지 활동을 정해 주세요. 아이는 자라고, 때로는 거부하고, 때로는 스스로 선택할 것입니다.</p>
       <div class="choices"><button class="primary" data-close>시작한다</button></div>`);
   };
-  if (auto) $('#b-continue', el).onclick = () => { S = migrate(E.deserialize(auto)); renderMain(); toast('자동저장을 불러왔습니다.'); };
+  if (auto) $('#b-continue', el).onclick = () => {
+    let st; try { st = parseSave(auto); } catch (e) { console.warn('autosave', e); toast(SAVE_BROKEN); return; }
+    S = st; renderMain(); toast('자동저장을 불러왔습니다.');
+  };
   $('#b-load', el).onclick = () => openSaveMenu('load');
 }
 const $$ = (sel, el = document) => [...el.querySelectorAll(sel)];
@@ -119,12 +137,16 @@ function mountPmap(e) {
   try { ALBUM.mountPersonalityMap(box, e.persHistory, { choices: S.annualLog, favor: ALBUM.endingFavor?.(e.id) }); }
   catch (err) { console.warn('personality map failed', err); box.closest('.panel')?.remove(); }
 }
-function openAlbum() {
+function openAlbum(onClosed) {
   if (!ALBUM || !meta) return;
-  const bg = h(`<div class="modal-bg album-bg"><div class="modal album-modal" style="max-width:1100px"></div></div>`);
-  document.body.appendChild(bg);
-  try { ALBUM.renderAlbum(bg.firstElementChild, meta, { onClose: () => { bg.remove(); if (META) META.saveMeta(store, meta); }, onChange: (m) => { meta = m; META?.saveMeta(store, meta); } }); }
-  catch (err) { console.warn('album failed', err); bg.remove(); toast('앨범을 여는 중 문제가 생겼습니다.'); }
+  const bg = h(`<div class="modal-bg album-bg"><div class="modal album-modal" style="max-width:1100px" role="dialog" aria-modal="true" aria-label="별의 앨범" tabindex="-1"></div></div>`);
+  document.body.appendChild(bg); syncInert();
+  const box = bg.firstElementChild;
+  try {
+    ALBUM.renderAlbum(box, meta, { onClose: () => { bg.remove(); syncInert(); if (META) META.saveMeta(store, meta); onClosed?.(); }, onChange: (m) => { meta = m; META?.saveMeta(store, meta); } });
+    box.focus({ preventScroll: true });
+  }
+  catch (err) { console.warn('album failed', err); bg.remove(); syncInert(); toast('앨범을 여는 중 문제가 생겼습니다.'); }
 }
 function hashSeed(str) { if (/^\d+$/.test(str)) return Number(str) % 2147483647; let x = 2166136261; for (const ch of str) { x ^= ch.charCodeAt(0); x = Math.imul(x, 16777619) >>> 0; } return x % 2147483647; }
 
@@ -184,11 +206,22 @@ function renderMain() {
   renderPortrait(); renderStats(); renderCalendar(); renderActList(); renderLog();
   $('#b-run').onclick = onRunMonth;
   $('#b-shop').onclick = openShop;
-  $('#b-mg').onclick = () => { if (!MG) return toast('미니게임 모듈이 없습니다.'); settings.minigames = !settings.minigames; saveSettings(); renderMain(); };
-  $('#b-same').onclick = () => { const last = S.history[S.history.length - 1]; if (last) { slots = [...last.slots]; renderCalendar(); } };
+  $('#b-mg').onclick = () => { if (busy) return; if (!MG) return toast('미니게임 모듈이 없습니다.'); settings.minigames = !settings.minigames; saveSettings(); renderMain(); };
+  // 실행된 활동(자율 선택·거부 대안·탈진 휴식)이 아니라 지난달에 세운 계획 그대로 ('아이에게 맡기기' 포함)
+  $('#b-same').onclick = () => {
+    const plan = Array.isArray(S.lastPlan) && S.lastPlan.length === 3 && S.lastPlan.every(id => ACTIVITY_MAP[id]) ? S.lastPlan : S.history[S.history.length - 1]?.slots;
+    if (plan) { slots = [...plan]; renderCalendar(); }
+  };
   $('#b-save').onclick = () => openSaveMenu('save');
   $('#b-loadm').onclick = () => openSaveMenu('load');
-  $('#b-title').onclick = async () => { const v = await showModal(`<h3>타이틀로 돌아갈까요?</h3><p>자동저장은 남아 있어서 타이틀에서 이어하기로 돌아올 수 있습니다.</p><div class="choices"><button data-v="yes" class="primary">타이틀로</button><button data-close>계속 키우기</button></div>`); if (v === 'yes') renderTitle(); };
+  $('#b-title').onclick = async () => {
+    if (busy) return;
+    const v = await showModal(`<h3>타이틀로 돌아갈까요?</h3><p>자동저장은 남아 있어서 타이틀에서 이어하기로 돌아올 수 있습니다.</p><div class="choices"><button data-v="yes" class="primary">타이틀로</button><button data-close>계속 키우기</button></div>`);
+    if (v !== 'yes') return;
+    // 첫 달을 보내기 전이어도 약속대로 이어하기가 되도록 지금 상태를 자동저장 (달과 달 사이라 처리 중인 이벤트가 없다)
+    if (!busy && !S.pendingEvents?.length) store.setItem(AUTOSAVE, E.serialize(S));
+    renderTitle();
+  };
 }
 function bar(v, color) { return `<span class="bar" style="display:inline-block;width:100%;vertical-align:middle"><i style="width:${v}%;background:${color}"></i></span>`; }
 
@@ -237,49 +270,58 @@ function log(line) { (S.uiLog ??= []).push(`[${S.age}세 ${S.month}월] ${line}`
 // ──────────────────────────────────────────────────────────────────────
 // 월 진행 플로우: 거부 → 실행 → 이벤트들 → 결산 → (생일) → 다음 달
 // ──────────────────────────────────────────────────────────────────────
+const snapshot = (st) => ({ stats: { ...st.stats }, gold: st.gold, stress: st.stress, trust: st.trust, pers: { ...st.personality } });
 async function onRunMonth() {
-  $('#b-run').disabled = true;
-  let plan = [...slots];
-  const proposals = E.checkRefusals(S, plan);
-  for (const p of proposals) {
-    const decision = await askRefusal(p);
-    const r = E.resolveRefusal(S, p, decision);
-    plan[p.slot] = r.finalActivity; log(r.text);
-    await showModal(`<h3>${esc(S.name)}의 반응</h3><p>${esc(r.text)}</p><div class="choices"><button class="primary" data-close>계속</button></div>`);
-  }
-  const report = E.runMonth(S, plan);
-  report.lines.forEach(l => log(l));
-  // 이벤트 처리
-  while (S.pendingEvents.length) {
-    const ev = E.currentEvent(S);
-    if (!ev.choices.length) { S.pendingEvents.shift(); continue; }
-    const idx = await showEvent(ev);
-    const ch = ev.choices.find(c => c.index === idx);
-    const opts = {};
-    if (ch?.minigame && ch.check && MG && settings.minigames) {
-      try {
-        const sc = await MG.playMinigame(ch.minigame, { childName: S.name, hair: S.hair, eyes: S.eyes, title: ev.title, stat: ch.check.stat, statName: STATS.find(x => x.id === ch.check.stat)?.name, value: ch.check.value, dc: ch.check.dc, reducedMotion: matchMedia('(prefers-reduced-motion: reduce)').matches });
-        if (typeof sc === 'number') opts.mgScore = sc;
-      } catch (e) { console.warn('minigame failed, auto-resolve', e); }
+  if (busy || !S || S.finished) return;
+  busy = true; syncInert();
+  const runBtn = $('#b-run'); if (runBtn) runBtn.disabled = true;
+  try {
+    S.lastPlan = [...slots];
+    let plan = [...slots];
+    const before = snapshot(S); // 거부 처리(신뢰·스트레스·순응 변화)도 이달 결산에 포함
+    const proposals = E.checkRefusals(S, plan);
+    for (const p of proposals) {
+      const decision = await askRefusal(p);
+      const r = E.resolveRefusal(S, p, decision);
+      plan[p.slot] = r.finalActivity; log(r.text);
+      await showModal(`<h3>${esc(S.name)}의 반응</h3><p>${esc(r.text)}</p><div class="choices"><button class="primary" data-close>계속</button></div>`);
     }
-    const out = E.chooseEvent(S, ev.id, idx, opts);
-    log(`${ev.title}: ${out.text}`);
-    await showModal(`<h3>${esc(ev.title)}</h3>${out.success === true ? '<span class="tag" style="color:var(--ok)">판정 성공</span>' : out.success === false ? '<span class="tag" style="color:var(--danger)">판정 실패</span>' : ''}<div class="result">${esc(out.text)}</div><div class="fxline">${fxSummary(out.effects)}</div><div class="choices"><button class="primary" data-close>계속</button></div>`);
-  }
-  // 월말 결산
-  await showSummary(report);
-  const end = E.endMonth(S);
-  if (end.birthday) {
-    await showBirthday(end.report);
-    if (end.annual && end.annual.options?.length) await showAnnual(end.annual);
-  }
-  store.setItem(AUTOSAVE, E.serialize(S));
-  lastReport = report;
+    const report = E.runMonth(S, plan);
+    report.before = before;
+    report.lines.forEach(l => log(l));
+    // 이벤트 처리
+    while (S.pendingEvents.length) {
+      const ev = E.currentEvent(S);
+      if (!ev.choices.length) { S.pendingEvents.shift(); continue; }
+      const idx = await showEvent(ev);
+      const ch = ev.choices.find(c => c.index === idx);
+      const opts = {};
+      if (ch?.minigame && ch.check && MG && settings.minigames) {
+        try {
+          const sc = await MG.playMinigame(ch.minigame, { childName: S.name, hair: S.hair, eyes: S.eyes, title: ev.title, stat: ch.check.stat, statName: STATS.find(x => x.id === ch.check.stat)?.name, value: ch.check.value, dc: ch.check.dc, reducedMotion: matchMedia('(prefers-reduced-motion: reduce)').matches });
+          if (typeof sc === 'number') opts.mgScore = sc;
+        } catch (e) { console.warn('minigame failed, auto-resolve', e); }
+      }
+      const out = E.chooseEvent(S, ev.id, idx, opts);
+      log(`${ev.title}: ${out.text}`);
+      await showModal(`<h3>${esc(ev.title)}</h3>${out.success === true ? '<span class="tag" style="color:var(--ok)">판정 성공</span>' : out.success === false ? '<span class="tag" style="color:var(--danger)">판정 실패</span>' : ''}<div class="result">${esc(out.text)}</div><div class="fxline">${fxSummary(out.effects)}</div><div class="choices"><button class="primary" data-close>계속</button></div>`);
+    }
+    // 월말 결산: runMonth의 after는 이벤트 전 값이라, 이벤트 효과까지 담도록 지금 상태로 다시 찍는다
+    report.after = snapshot(S);
+    await showSummary(report);
+    const end = E.endMonth(S);
+    if (end.birthday) {
+      await showBirthday(end.report);
+      if (end.annual && end.annual.options?.length) await showAnnual(end.annual);
+    }
+    store.setItem(AUTOSAVE, E.serialize(S));
+    lastReport = report;
+  } finally { busy = false; syncInert(); }
   renderMain();
 }
 function askRefusal(p) {
   const act = ACTIVITY_MAP[p.activityId], alt = ACTIVITY_MAP[p.alternative];
-  return new Promise(res => showModal(`<h3>${esc(S.name)}이(가) 「${act.name}」을(를) 거부합니다</h3>
+  return new Promise(res => showModal(`<h3>${esc(josa(S.name, '이'))} 「${esc(act.name)}」${josa(act.name, '을').slice(act.name.length)} 거부합니다</h3>
     <p>${esc(p.line)}</p><div class="fxline">이유: ${p.reason === 'tired' ? '스트레스가 높다' : '반항 성향'} · 대안: ${alt.name}</div>
     <div class="choices">
       <button data-v="accept"><b>받아들인다</b><small>아이 뜻대로 ${alt.name}. 신뢰 +4, 순응 +1</small></button>
@@ -290,12 +332,19 @@ function askRefusal(p) {
 function showEvent(ev) {
   return new Promise(async res => {
     const m = showModal(`<h3>${esc(ev.title)}</h3><div class="evimg" id="evimg"></div><p>${esc(ev.text)}</p>
-      <div class="choices">${ev.choices.map(c => `<button data-v="${c.index}"><b>${esc(c.label)}</b>${c.hint ? `<small>${esc(c.hint)}</small>` : ''}</button>`).join('')}</div>`, (v) => res(Number(v)));
+      <div class="choices">${ev.choices.map(c => `<button data-v="${c.index}"><b>${esc(c.label)}</b>${c.hint ? `<small>${esc(choiceHint(c))}</small>` : ''}</button>`).join('')}</div>`, (v) => res(Number(v)));
     const img = $('#evimg', m.el);
     const path = ev.image || (ev.npc ? 'npc/' + ev.npc : 'bg/room_' + S.season);
     if (await assetExists(path)) img.style.background = `url(${assetUrl(path)}) center/cover`;
-    else { img.classList.add('evimg-empty'); img.textContent = '📍 ' + ((IMG_BG[path] || IMG_NPC[path] || '').split(/[.:]/)[0] || '우리 집 거실'); }
+    else { img.classList.add('evimg-empty'); img.textContent = '📍 ' + placeCaption(path); }
   });
+}
+// 미니게임이 꺼져 있거나 모듈이 없으면 '· 미니게임'을 약속하지 않는다
+function choiceHint(c) { return settings.minigames && MG ? c.hint : String(c.hint).replace(' · 미니게임', ''); }
+// 그림이 없을 때의 장소 캡션. 거실 배경은 생성 프롬프트('같은 거실, 겨울 밤…') 대신 계절만.
+function placeCaption(path) {
+  if (path.startsWith('bg/room_')) return `우리 집 거실 · ${SEASON_NAME[path.slice(8)] ?? SEASON_NAME[S.season]}`;
+  return (IMG_BG[path] || IMG_NPC[path] || '').split(/[.:]/)[0] || '우리 집 거실';
 }
 function fxSummary(effects) {
   if (!effects) return '';
@@ -319,12 +368,17 @@ function showSummary(report) {
 }
 function showBirthday(r) {
   return showModal(`<h3>🎂 ${esc(S.name)}, ${S.age}세가 되었다</h3>
-    <p>${stageOf(S.age).name}에 들어섰다. ${stageNote(S.age)}</p>
+    <p>${birthdayStageLine(S.age)} ${stageNote(S.age)}</p>
     <div class="summary"><span class="k">작년에 가장 많이 한 일</span><span>${r.top.map(t => `${t.name} ${t.n}회`).join(', ') || '-'}</span>
       <span class="k">아이에게 맡긴 횟수</span><span>${r.autonomy}회</span>
       <span class="k">능력치 총합 증가</span><span>+${r.sumGain}</span>
       <span class="k">현재 신뢰 / 스트레스</span><span>${r.trust} / ${r.stress}</span></div>
     <div class="choices"><button class="primary" data-close>새해를 시작한다</button></div>`);
+}
+// 단계는 2년씩: 바뀌는 해에만 '들어섰다', 둘째 해는 '두 번째 해'
+function birthdayStageLine(age) {
+  const st = stageOf(age), prev = stageOf(age - 1);
+  return st.id !== prev.id ? `${st.name}에 들어섰다.` : `${st.name}의 두 번째 해다.`;
 }
 function stageNote(age) {
   return { 12: '학교에 친구와 라이벌이 생길 시기다. 외모가 조금 변했다.', 14: '사춘기. 거부가 늘어나고, 아이에게 맡기는 선택이 중요해진다.', 16: '진로 제안이 들어오기 시작한다. 연애 서브플롯이 열린다.', 17: '마지막 해. 열한 번째 달에 중요한 대화가 있다.' }[age] || '';
@@ -348,7 +402,7 @@ function renderEnding() {
   app.innerHTML = '';
   app.appendChild(h(`<div class="ending">
     <div class="title" style="min-height:auto;padding:30px 0 10px"><div class="sub">8년의 끝 · ${esc(S.name)}, 18세</div><h1>${esc(e.name)}</h1><div class="sub">${esc(e.cat)}${e.hidden ? ' · ✨ 히든 엔딩' : ''}${e.runnerUp ? ` · 다른 길이었다면: ${esc(e.runnerUp.name)}` : ''}</div></div>
-    <div class="panel" style="display:grid;grid-template-columns:200px 1fr;gap:16px;align-items:start">
+    <div class="panel ending-hero">
       <div class="portrait" id="portrait"></div>
       <div><h2>10년 후</h2><div class="epi">${esc(e.epilogue)}</div></div>
     </div>
@@ -373,8 +427,12 @@ function renderEnding() {
 // 연간 보호자 결정 · 상점 · 소지품
 // ──────────────────────────────────────────────────────────────────────
 async function showAnnual(a) {
-  const v = await showModal(`<h3>🗓 ${esc(a.title)}</h3>${a.image ? `<div class="evimg" style="background:url(${assetUrl(a.image)}) center/cover"></div>` : ''}<p>${esc(a.text)}</p><div class="hint">1년에 한 번, 이 해의 방향을 정합니다.</div>
+  const m = showModal(`<h3>🗓 ${esc(a.title)}</h3>${a.image ? `<div class="evimg evimg-empty" id="anim">📍 ${esc(placeCaption(a.image))}</div>` : ''}<p>${esc(a.text)}</p><div class="hint">1년에 한 번, 이 해의 방향을 정합니다.</div>
     <div class="choices">${a.options.map(o => `<button data-v="${o.index}"><b>${esc(o.label)}</b>${o.desc ? `<small>${esc(o.desc)}</small>` : ''}</button>`).join('')}</div>`);
+  // 그림이 실제로 있을 때만 배경으로 (없으면 빈 상자 대신 장소 캡션)
+  const box = $('#anim', m.el);
+  if (box) assetExists(a.image).then(ok => { if (ok && box.isConnected) { box.classList.remove('evimg-empty'); box.textContent = ''; box.style.background = `url(${assetUrl(a.image)}) center/cover`; } });
+  const v = await m;
   const r = E.applyAnnual(S, Number(v));
   log(`[연간 결정] ${a.title}: ${a.options.find(o => o.index === Number(v))?.label ?? ''}`);
   await showModal(`<h3>${esc(a.title)}</h3><div class="result">${esc(r.text || '결정을 내렸다.')}</div><div class="fxline">${fxSummary(r.effects)}</div><div class="choices"><button class="primary" data-close>새해를 시작한다</button></div>`);
@@ -385,13 +443,14 @@ function itemsHtml() {
   return `<div class="hint" style="margin-top:6px">소지품: ${owned.map(([id, n]) => { const it = E.ITEMS.find(i => i.id === id); return esc(it?.name ?? id) + (n > 1 ? ` ×${n}` : ''); }).join(', ')}</div>`;
 }
 async function openShop() {
+  if (busy) return;
   const list = E.shopList(S);
   const kinds = { outfit: '의상', accessory: '장신구', book: '책', tool: '도구', gift: '선물', consumable: '소모품' };
   const v = await showModal(`<h3>🛍 읍내 상점</h3><div class="hint">소지금 ${S.gold}G · 산 물건은 바로 효과가 나고, 일부는 매달 조금씩 도움이 됩니다.</div>
     <div class="choices" style="grid-template-columns:repeat(auto-fill,minmax(220px,1fr))">${list.map(it => `<button data-v="${it.id}" ${it.soldOut || !it.affordable ? 'disabled' : ''}><b>${esc(it.name)}</b> <span class="tag">${kinds[it.kind] ?? it.kind}</span><small>${esc(it.desc ?? '')}</small><small>${it.price}G${it.owned ? ` · 보유 ${it.owned}` : ''}${it.soldOut ? ' · 보유 중' : ''}${it.onBuy ? ' · ' + fxSummary(it.onBuy) : ''}${it.monthly ? ' · 매달 ' + fxSummary(it.monthly) : ''}</small></button>`).join('') || '<p>지금 살 수 있는 물건이 없다.</p>'}</div>
     <div class="choices"><button data-close>나가기</button></div>`);
   if (v == null) return;
-  try { const r = E.buyItem(S, v); log(`${r.item.name}을(를) 샀다. (-${r.item.price}G)`); toast(`${r.item.name} 구입`); store.setItem(AUTOSAVE, E.serialize(S)); }
+  try { const r = E.buyItem(S, v); log(`${josa(r.item.name, '을')} 샀다. (-${r.item.price}G)`); toast(`${r.item.name} 구입`); store.setItem(AUTOSAVE, E.serialize(S)); }
   catch (err) { toast(err.message); }
   renderMain();
 }
@@ -400,16 +459,21 @@ async function openShop() {
 // 세이브/로드
 // ──────────────────────────────────────────────────────────────────────
 function openSaveMenu(mode) {
+  if (busy) return;
   const rows = Array.from({ length: 10 }, (_, i) => {
     const raw = store.getItem(SLOT(i + 1));
-    let label = '— 비어 있음 —';
-    if (raw) { try { const s = JSON.parse(raw); label = `${s.name} · ${s.age}세 ${s.month}월 · ${s.finished ? '완료' : '진행 중'} · ${new Date(s.savedAt || 0).toLocaleString('ko-KR')}`; } catch { label = '(손상된 데이터)'; } }
-    return `<button data-v="${i + 1}" ${mode === 'load' && !raw ? 'disabled' : ''}><b>슬롯 ${i + 1}</b><small>${esc(label)}</small></button>`;
+    let label = '— 비어 있음 —', bad = false;
+    if (raw) { try { const s = JSON.parse(raw); if (!isSaveShape(s)) throw new Error('shape'); label = `${s.name} · ${s.age}세 ${s.month}월 · ${s.finished ? '완료' : '진행 중'} · ${new Date(s.savedAt || 0).toLocaleString('ko-KR')}`; } catch { label = '(손상된 데이터)'; bad = true; } }
+    return `<button data-v="${i + 1}" ${mode === 'load' && (!raw || bad) ? 'disabled' : ''}><b>슬롯 ${i + 1}</b><small>${esc(label)}</small></button>`;
   }).join('');
   showModal(`<h3>${mode === 'save' ? '저장' : '불러오기'}</h3><div class="choices">${rows}</div><div class="choices"><button data-close>닫기</button></div>`, (v) => {
     const n = Number(v);
     if (mode === 'save') { S.savedAt = Date.now(); store.setItem(SLOT(n), E.serialize(S)); toast(`슬롯 ${n}에 저장했습니다.`); }
-    else { const raw = store.getItem(SLOT(n)); if (raw) { S = migrate(E.deserialize(raw)); slots = ['school', 'farm', 'rest']; renderMain(); toast(`슬롯 ${n}을 불러왔습니다.`); } }
+    else {
+      const raw = store.getItem(SLOT(n)); if (!raw) return;
+      let st; try { st = parseSave(raw); } catch (e) { console.warn('slot', n, e); toast(SAVE_BROKEN); return; }
+      S = st; slots = ['school', 'farm', 'rest']; renderMain(); toast(`슬롯 ${n}을 불러왔습니다.`);
+    }
   });
 }
 
@@ -417,18 +481,28 @@ function openSaveMenu(mode) {
 // 모달·토스트
 // ──────────────────────────────────────────────────────────────────────
 function showModal(inner, onChoice) {
-  const bg = h(`<div class="modal-bg"><div class="modal">${inner}</div></div>`);
+  const bg = h(`<div class="modal-bg"><div class="modal" role="dialog" aria-modal="true" tabindex="-1">${inner}</div></div>`);
   document.body.appendChild(bg);
+  syncInert();
+  // 초점은 모달 상자에 (첫 선택지에 두면 누르고 있던 Enter가 그대로 선택해 버릴 수 있다). Tab은 모달 안에서만 돈다(#app inert).
+  bg.firstElementChild.focus({ preventScroll: true });
+  const close = () => { bg.remove(); syncInert(); };
   const p = new Promise(res => {
     bg.addEventListener('click', ev => {
       const b = ev.target.closest('button'); if (!b || b.disabled) return;
-      if (b.hasAttribute('data-close')) { bg.remove(); res(null); return; }
-      if (b.dataset.v !== undefined) { bg.remove(); onChoice?.(b.dataset.v); res(b.dataset.v); }
+      if (b.hasAttribute('data-close')) { close(); res(null); return; }
+      if (b.dataset.v !== undefined) { close(); onChoice?.(b.dataset.v); res(b.dataset.v); }
     });
   });
   p.el = bg;
   return p;
 }
-function toast(msg) { const t = h(`<div class="toast">${esc(msg)}</div>`); document.body.appendChild(t); setTimeout(() => t.remove(), 2500); }
+function toast(msg, ms = 2500) {
+  const t = h(`<div class="toast">${esc(msg)}</div>`);
+  if (ms !== 2500) t.style.animationDuration = `${ms - 100}ms`;
+  document.body.appendChild(t); setTimeout(() => t.remove(), ms);
+}
 
 renderTitle();
+if (metaRep?.status === 'corrupt') toast('별의 앨범 기록이 손상되어 새로 시작합니다 (원본은 백업에 보관).', 6000);
+else if (metaRep?.status === 'newer') toast('더 새 버전에서 저장된 별의 앨범입니다. 읽을 수 있는 만큼만 읽었습니다 (원본은 백업에 보관).', 6000);

@@ -214,7 +214,7 @@ export default [
       { label: '말을 대신 전해 주자', effects: { 'stat.sens': +4, 'stat.mag': +3, 'stat.moral': +2, stress: +4, 'pers.roman': +2 },
         result: `{name은} 에피가 불러 주는 말을 한 글자씩 받아 적었다. 받을 사람은 항구 빵집의 늙은 여주인, 에피의 언니였다. 쪽지를 접는 손이 떨렸다.`, next: 'b04b_ghost_message' },
       { label: '기도로 편히 보내 주자', effects: { 'stat.faith': +6, 'stat.moral': +2, 'stat.mag': -2, 'pers.agree': +1, stress: -4 },
-        result: `{name은} 촛불 두 개를 켜고 밤새 기도했다. 새벽에 묘지에 다녀오더니 에피가 웃더라고 했다. "말은 못 전했지만 괜찮대. 들어 준 걸로 됐대." 그 뒤로 묘지는 조용했다.` },
+        result: `{name은} 촛불 두 개를 켜고 밤새 기도했다. 새벽에 묘지에 다녀오더니 에피가 웃더라고 했다. "말은 못 전했지만 괜찮대. 들어 준 걸로 됐대." 그 뒤로 북쪽 담장의 푸른 불은 한결 잔잔해졌다.` },
       { label: '못 가게 붙잡을 수는 없어?', conditions: ['stat.mag >= 150'], effects: { 'flag.b04b_ghost_bound': true, 'stat.mag': +6, 'stat.faith': -3, 'pers.good': -2, stress: +8 },
         result: `{name은} 마력으로 에피의 빛을 묶었다. 에피는 다시 또렷해졌다. 그날부터 {name}의 손끝은 늘 차가웠다. 에피는 고맙다고 하지 않았다.`, next: 'b04b_ghost_message' },
       { label: '엘다에게 물어보자', conditions: ['flag.met_elda'], effects: { 'rel.elda': +5, 'stat.mag': +4, 'stat.sens': +2 },
@@ -264,8 +264,9 @@ export default [
           result: `장학생 명단에 {name}의 이름이 올랐다. 시험관 하나가 답안지 귀퉁이에 적어 보냈다. "별 계산 문제는 우리보다 잘 풀었더군."` },
         fail: { effects: { 'stat.int': +5, stress: +10, 'pers.ambit': +1 },
           result: `두 문제 차이로 떨어졌다. {name은} 답안 사본을 받아 와 틀린 문제를 밤새 다시 풀었다. 새벽에 혼잣말이 들렸다. "삼 년 뒤엔 내가 문제를 낼 거야."` } },
-      { label: '은사에게 소개장을 쓴다', conditions: ["guardian == 'scholar'"], effects: { 'flag.scholar_path': true, 'stat.int': +6, reputation: -2, trust: -3, 'pers.ambit': +2 },
-        result: `당신의 소개장 한 장으로 청강생 자리가 났다. {name은} 통지서를 받고도 웃지 않았다. "시험 보고 싶었는데." 그래도 다음 날 왕도행 마차에 올랐다.` },
+      // 학자 보호자는 학술원에서 제적된 '위서 쓴 학자'(b06) — 스승이 아니라 학술원에 남은 옛 동문의 손을 빌린다.
+      { label: '옛 동문에게 소개장을 부탁한다', conditions: ["guardian == 'scholar'"], effects: { 'flag.scholar_path': true, 'stat.int': +6, reputation: -2, trust: -3, 'pers.ambit': +2 },
+        result: `학술원에 남은 옛 동문이 당신 부탁으로 소개장을 써 주었다. 그 한 장으로 청강생 자리가 났다. {name은} 통지서를 받고도 웃지 않았다. "시험 보고 싶었는데." 그래도 다음 날 왕도행 마차에 올랐다.` },
       { label: '별 지도를 대신 내 봐', conditions: ['flag.star_charts'], effects: { 'flag.scholar_path': true, 'stat.int': +8, reputation: +6, 'pers.ambit': +1 },
         result: `시험관들은 답안지 대신 펼쳐진 별 지도를 오래 내려다보았다. 한 사람이 물었다. "이걸 직접?" 그날로 장학생 자리가 났다.` },
       { label: '이번엔 쉬어 가자', effects: { stress: -8, trust: +2, 'pers.ambit': -2, 'stat.int': +2 },
@@ -308,8 +309,8 @@ export default [
 
   // ══ ⑥ 신앙: 의심·대주교·순례 ═══════════════════════════════════════════
   {
-    id: 'b04b_faith_hail', title: '우박 내린 밭', age: [15, 17], weight: 2, image: 'bg/wheat_field',
-    conditions: ['stat.faith >= 150'],
+    id: 'b04b_faith_hail', title: '우박 내린 밭', age: [15, 17], weight: 5, image: 'bg/wheat_field',
+    conditions: ['stat.faith >= 150', 'month >= 7', 'month <= 9'], // '수확 한 주 전' — 수확제(9월) 무렵에만 (석 달 창이라 weight를 높였다)
     text: `수확 한 주 전, 우박이 평원을 쓸고 갔다. {name이} 풍년을 빌며 매일 밤 기도해 주던 이웃 한스 아저씨네 밀밭이 가장 크게 망가졌다. 성당에서 돌아온 아이가 기도서를 탁자에 내려놓았다. "{call}, 기도는 어디로 가? 듣는 사람이 있긴 해?"`,
     choices: [
       { label: '나도 모르겠다고 말한다', effects: { trust: +6, 'stat.sens': +4, 'stat.faith': -2, 'pers.roman': -1 },
@@ -319,7 +320,7 @@ export default [
       { label: '대주교님께 여쭤 보렴', effects: { 'flag.b04b_archbishop_met': true, 'stat.faith': +6, 'stat.cult': +3, 'pers.agree': +1 },
         result: `대주교는 답을 주지 않았다. 대신 오십 년 전 자기도 같은 걸 물었던 날 이야기를 해 주었다. 돌아오는 길, {name은} 기도서를 다시 꺼내 들었다.` },
       { label: '사제복을 벗은 날을 이야기한다', conditions: ["guardian == 'priest'"], effects: { trust: +8, 'stat.faith': +5, 'stat.sens': +3 },
-        result: `"{call}도 의심한 적 있어?" "있지. 그래서 성당을 떠났고, 그래서 다시 기도하게 됐어." 처음 듣는 이야기였다. 둘은 같은 촛불 앞에 오래 앉아 있었다.` },
+        result: `"{call}도 의심한 적 있어?" "있지. 사제복을 벗던 그 겨울에. 그런데 그 뒤에야 다시 기도하게 됐어." 의심했다는 말은 처음 들었다. 둘은 같은 촛불 앞에 오래 앉아 있었다.` },
     ],
   },
   {
@@ -411,7 +412,7 @@ export default [
   },
   {
     id: 'b04b_elda_notebook', title: '엘다의 약초 수첩', age: [16, 17], weight: 1.8, npc: 'elda', image: 'bg/elda_hut',
-    conditions: ['rel.elda >= 35', 'stat.int >= 180'],
+    conditions: ['flag.met_elda', 'rel.elda >= 35', 'stat.int >= 180'],
     text: `엘다가 손때 묻은 수첩 세 권을 탁자에 올려놓았다. "평생 적은 거예요. 평원 사람들 체질, 계절마다 도는 병, 약초 캐는 자리." 엘다는 {name을} 보며 다정하게 웃었다. "탑에 가서 큰 마법사가 되어도 좋아요. 그래도 이건 누군가 이어 줘야 해서요."`,
     choices: [
       { label: '받아서 이어 가 봐', effects: { 'rel.elda': +10, 'stat.int': +5, 'stat.moral': +4, 'pers.ambit': -3 },

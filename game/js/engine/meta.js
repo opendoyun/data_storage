@@ -251,7 +251,8 @@ export function recordRun(meta0, finalState, nowIso, opts = {}) {
 
   // 별 조각
   const shardBreakdown = [{ reason: 'run', label: '8년을 끝까지 함께했다', n: SHARD_RULES.run }];
-  if (isNew) shardBreakdown.push(hidden ? { reason: 'newHidden', label: '처음 본 히든 엔딩', n: SHARD_RULES.newHidden } : { reason: 'newEnding', label: '처음 본 엔딩', n: SHARD_RULES.newEnding });
+  // 게이트를 아무것도 통과하지 못해 '가장 가까운 엔딩'으로 떨어진 경우(e.fallback)는 새 엔딩 보너스를 주지 않는다
+  if (isNew && !e.fallback) shardBreakdown.push(hidden ? { reason: 'newHidden', label: '처음 본 히든 엔딩', n: SHARD_RULES.newHidden } : { reason: 'newEnding', label: '처음 본 엔딩', n: SHARD_RULES.newEnding });
   const shardsGained = shardBreakdown.reduce((a, b) => a + b.n, 0);
   meta.shards += shardsGained;
   meta.shardsEarned += shardsGained;
@@ -381,7 +382,7 @@ export function buyBonus(meta0, id) {
 
 export function legacyOf(meta0, max = MAX_LEGACY) {
   const meta = migrateMeta(meta0);
-  return meta.runs.slice().reverse().slice(0, max).map(r => ({ name: r.name, endingId: r.endingId, endingName: r.endingName, cat: r.cat }));
+  return meta.runs.slice().reverse().slice(0, max).map(r => ({ name: r.name, endingId: r.endingId, endingName: r.endingName, cat: r.cat, guardian: r.guardian }));
 }
 
 // → engine.newGame에 그대로 펼쳐 넣을 수 있는 { guardian, bonuses, legacy, playthrough } (+ bonusIds: 실제 적용된 보너스)

@@ -22,7 +22,7 @@ python3 -m http.server 8080     # 또는 npm run serve
 | 항목 | 수량 |
 |---|---|
 | 이벤트 | 450 (판정 299, 미니게임 63, 연쇄 93) |
-| 엔딩 | 48 (히든 8) · 후일담 편지 144통 |
+| 엔딩 | 49 (히든 8) · 후일담 편지 147통 |
 | 활동 | 24 (교육 9 · 아르바이트 10 · 자유 5) |
 | 연간 보호자 결정 | 7 (11~17세 생일) |
 | 상점 아이템 | 36 |
@@ -62,7 +62,7 @@ node tools/reach.mjs 24          # 엔딩 도달성·이벤트 커버리지 보�
 
 ## 그림 (제미나이)
 
-게임은 `assets/<key>.png`가 있으면 자동으로 쓰고, 없으면 내장 SVG를 보여 준다. 115장 목록은 `assets/manifest.json`.
+게임은 `assets/<key>.png`가 있으면 자동으로 쓰고, 없으면 내장 SVG를 보여 준다. 116장 목록은 `assets/manifest.json`.
 
 - **API**: 클라우드 환경 설정에 `GEMINI_API_KEY`를 환경 변수로 추가한 뒤 `node tools/gemini/generate.mjs` (먼저 `--dry-run`으로 계획과 비용 확인). 키는 채팅에 붙여 넣지 않는다.
 - **Chrome**: 내 컴퓨터의 Claude 세션에서 Control Chrome으로 gemini.google.com을 조작한다. 절차는 [`../docs/game-design/control-chrome-guide.md`](../docs/game-design/control-chrome-guide.md)와 [`../docs/game-design/gemini-chrome-runbook.md`](../docs/game-design/gemini-chrome-runbook.md).

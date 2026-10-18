@@ -195,7 +195,7 @@ export default [
         result: `대주교는 당신 말을 끝까지 들었다. 일주일 뒤 세드릭 부제는 먼 산골 수도원으로 '양을 세러' 떠났다. 수당은 돌아왔다. {name이} 말했다. "다음엔 나도 데려가."` },
       { label: '봉사를 그만두게 한다', effects: { trust: +2, stress: -4, 'stat.faith': -2, 'pers.good': -1 },
         result: `{name은} 성당에 가지 않았다. 마음은 편했다. 그런데 장날마다 봉사 아이들이 수당 없이 일한다는 이야기를 들을 때면 {name}의 붉은 눈이 가늘어졌다.` },
-      { label: '같은 사제로서 세드릭을 만난다', conditions: ["guardian == 'priest'"], effects: { 'stat.moral': +3, 'stat.faith': +3, trust: +5, 'pers.good': +1 },
+      { label: '옛 사제로서 세드릭을 만난다', conditions: ["guardian == 'priest'"], effects: { 'stat.moral': +3, 'stat.faith': +3, trust: +5, 'pers.good': +1 },
         result: `당신은 세드릭과 제의실에 단둘이 마주 앉았다. 오래 아무 말도 하지 않았다. 세드릭이 먼저 무너졌다. 노름빚이었다. 그는 동전 주머니를 내놓고 스스로 부제 자리를 내려놓았다.` },
     ],
   },

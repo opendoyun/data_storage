@@ -18,7 +18,7 @@
 | `ending/<엔딩 id>` | 48 | 엔딩 일러스트("10년 후", 공주 약 28세). `js/data/endings.js` 32종 + `endings_ext.js` 16종(히든 5 포함) | 1280×720 (16:9) |
 | `ui/title_key` `ui/album_cover` | 2 | 타이틀 키 비주얼, 엔딩 앨범 표지 | 1600×900 (16:9) |
 
-현재 합계 **115장** (2026-10-18). 엔딩이나 배경이 추가되면 `node tools/gemini/build-manifest.mjs`가 자동으로 목록에 넣습니다.
+현재 합계 **116장** (2026-10-18). 엔딩이나 배경이 추가되면 `node tools/gemini/build-manifest.mjs`가 자동으로 목록에 넣습니다.
 크기는 `js/data/images.js`의 `SIZES`를 그대로 따릅니다(캐릭터 시트만 1600×900). 매니페스트 검사가 크기·경로가 다르면 실패시킵니다.
 정확한 크기가 아니어도 `node tools/gemini/fit.mjs`가 가운데 기준으로 잘라 맞춥니다. 게임 화면은 `object-fit: cover`로 보여 주므로 중요한 것은 화면 가운데에 둡니다.
 

@@ -26,6 +26,11 @@
 // 미니게임: recipe_card(요리) · known_trail(모험) · extra_stars(시험) — 판정 12개 중 3개
 // 안전: 이전 딸은 어른이지만 보호자에게는 '오래 떠나 있던 아이'로만 다가온다. 연애·연애 암시 없음.
 import { josa, hasBatchim } from '../../engine/josa.js';
+import { GUARDIANS } from '../guardians.js';
+// 이전 회차의 딸이 '자기' 보호자를 부르던 호칭. 이번 회차 출신이 달라도 그 아이는 자기가 부르던 말로 부른다.
+const herCall = (s, i = 0) => GUARDIANS[s?.legacy?.[i]?.guardian]?.call ?? GUARDIANS[s?.guardian]?.call ?? '아빠';
+const HER_TOK = /\{call(이랑|이에요|이었|으로|이야|이여|이|가|은|는|을|를|과|와|아|야|로|랑)?\}/g;
+const inHerVoice = (s, str, i = 0) => String(str ?? '').replace(HER_TOK, (_, p) => (p ? josa(herCall(s, i), p) : herCall(s, i)));
 
 // ── 카테고리별 장면 조각 ─────────────────────────────────────────────────
 // mark: 문설주 눈금 옆 표시 · look: 카메오 차림 · lookShort: 들판 장면용 짧은 차림 · token/tokenShort/tokenLine: 남긴 물건
@@ -329,7 +334,7 @@ export default [
   { id: 'b14_recipe_card', title: '남의 글씨로 쓴 요리법', age: [10, 13], weight: 1, conditions: ['legacyCount >= 1'],
     text: (s) => {
       const l = L(s), c = C(s);
-      return `찬장 맨 안쪽, 이 빠진 찻잔 밑에서 기름 얼룩이 진 카드가 나왔다. 「${l.name}의 호박 수프」. 재료 목록 아래 작은 메모. ${c.recipe} 그리고 맨 아래 한 줄. 「{call이} 제일 좋아함」. 당신은 숨을 멈췄다. 정말로 당신이 세상에서 제일 좋아하는 수프다.`
+      return `찬장 맨 안쪽, 이 빠진 찻잔 밑에서 기름 얼룩이 진 카드가 나왔다. 「${l.name}의 호박 수프」. 재료 목록 아래 작은 메모. ${inHerVoice(s, c.recipe)} 그리고 맨 아래 한 줄. 「${inHerVoice(s, '{call이}')} 제일 좋아함」. 당신은 숨을 멈췄다. 정말로 당신이 세상에서 제일 좋아하는 수프다.`
         + (same(s) ? ' {name이} 카드를 낚아챘다. "내 수프래! 나 이런 거 쓴 적 없는데!"' : ' {name이} 벌써 앞치마를 두르고 있었다.');
     },
     choices: [
@@ -392,7 +397,7 @@ export default [
           const names = namesOf(s);
           const line = !names.length ? '앞의 아가씨들 이름은 별빛에 다 적어 두었어요.'
             : allSame(s) ? '앞의 아가씨들도 다 {name이었}어요. 그래도 다 다른 아가씨였어요.'
-            : `앞의 아가씨들 이름도 다 알아요. ${names.join(', ')}.`;
+            : `앞의 아가씨들 이름도 다 알아요. ${names.join(', ')}.${(s.playthrough || 3) - 1 > names.length ? ' 그보다 앞의 아가씨들도요.' : ''}`; // 기록은 다섯 명까지(MAX_LEGACY)
           return `"${ordinal(s.playthrough || 3)}예요. 이번 아가씨까지." 큐브가 날개를 접었다. "${line} 저는 잊어버리면 안 되거든요. 그게 제 일이에요."`;
         } },
       { label: '그만 세고 자라고 한다', effects: { 'rel.cube': -3, gHealth: +3, 'stat.sens': +2 },
@@ -440,7 +445,7 @@ export default [
 
   // ══ 연쇄 ② 낯익은 얼굴 (legacy_met) ════════════════════════════════════
   { id: 'b14_familiar_face', title: '낯익은 얼굴', age: [12, 15], weight: 3, image: 'bg/market', conditions: ['legacyCount >= 1', '!flag.legacy_met'],
-    text: (s) => `장날 광장. 사람들 사이로 걸어오던 한 여자가 {name} 앞에서 우뚝 멈췄다. ${C(s).look} 은백색 머리에 붉은 눈, 스물여덟쯤 되었을까. 여자는 아이를 한참 내려다보다 고개를 들어 당신을 보았다. "……{call}?" 그러고는 제 입을 가렸다. "죄송해요. 아는 분이랑 너무 닮으셔서."`,
+    text: (s) => `장날 광장. 사람들 사이로 걸어오던 한 여자가 {name} 앞에서 우뚝 멈췄다. ${C(s).look} 은백색 머리에 붉은 눈, 스물여덟쯤 되었을까. 여자는 아이를 한참 내려다보다 고개를 들어 당신을 보았다. "……${inHerVoice(s, '{call}')}?" 그러고는 제 입을 가렸다. "죄송해요. 아는 분이랑 너무 닮으셔서."`,
     choices: [
       { label: '차라도 한잔하자고 청한다', effects: { trust: +2, 'stat.eti': +2, 'flag.b14_saw_her': true }, next: 'b14_her_tea',
         result: (s) => `여자는 잠깐 망설이다 고개를 끄덕였다. "${cop(L(s).name, '이에요', '예요')}. 제 이름." ` + (same(s) ? '{name이} 당신 소매를 꽉 쥐었다. 이름이 같았다.' : '{name이} 그 이름을 입속으로 따라 불렀다. 처음 듣는데 혀에 익은 이름이었다.') },
@@ -487,7 +492,7 @@ export default [
     },
     choices: [
       { label: '고맙게 받는다', effects: { 'flag.legacy_met': true, 'stat.sens': +3, 'stat.eti': +2, trust: +2 },
-        result: (s) => `${C(s).tokenLine} {name이} 그것을 두 손으로 꼭 쥐었다. 그날 밤 아이는 그것을 베개 밑에 넣고 잤다.` },
+        result: (s) => `${inHerVoice(s, C(s).tokenLine)} {name이} 그것을 두 손으로 꼭 쥐었다. 그날 밤 아이는 그것을 베개 밑에 넣고 잤다.` },
       { label: '{name이} 답례 인사를 하게 한다', check: { stat: 'eti', dc: 100 },
         success: { effects: { 'flag.legacy_met': true, 'stat.eti': +4, 'stat.chm': +2, 'pers.ambit': +1 }, result: '아이는 치맛자락을 살짝 잡고 허리를 숙였다. 흠잡을 데 없는 인사였다. 그녀가 눈을 동그랗게 떴다. "어디서 배웠어? 나는 그거 열여섯에야 겨우 했는데."' },
         fail: { effects: { 'flag.legacy_met': true, 'stat.sens': +3, stress: -4 }, result: '인사를 하려던 아이가 와락 그녀 품에 안겨 버렸다. 자기도 왜 그러는지 모르는 얼굴이었다. 그녀는 아이 등을 오래 토닥였다. 인사보다 나았다.' } },
@@ -556,7 +561,7 @@ export default [
     ] },
 
   { id: 'b14_guardian_dream', title: '다른 아이의 꿈', age: [12, 16], weight: 0.8, guardian: true, conditions: ['playthrough >= 2'],
-    text: (s) => `꿈에서 당신은 이 집 부엌에 서 있었다. 식탁 맞은편에서 다 자란 아이가 짐을 꾸리고 있었다. ${!has(s) ? '이름이 떠오르지 않는 아이.' : same(s) ? '이름은 {name이었}다. 지금 이 아이와 같은.' : `이름은 ${cop(L(s).name, '이었다', '였다')}.`} ${C(s).farewell} 눈을 뜨니 새벽이었다. 젖은 베개를 뒤집는데 문틈으로 {name이} 들여다보았다. "{call}, 울었어?"`,
+    text: (s) => `꿈에서 당신은 이 집 부엌에 서 있었다. 식탁 맞은편에서 다 자란 아이가 짐을 꾸리고 있었다. ${!has(s) ? '이름이 떠오르지 않는 아이.' : same(s) ? '이름은 {name이었}다. 지금 이 아이와 같은.' : `이름은 ${cop(L(s).name, '이었다', '였다')}.`} ${inHerVoice(s, C(s).farewell)} 눈을 뜨니 새벽이었다. 젖은 베개를 뒤집는데 문틈으로 {name이} 들여다보았다. "{call}, 울었어?"`,
     choices: [
       { label: '꿈 이야기를 들려준다', effects: { trust: +5, 'stat.sens': +3, 'pers.roman': +2 },
         result: '아이는 이불을 끌고 와 옆에 앉아 끝까지 들었다. "그 언니, 좋겠다. {call이} 울 만큼 보고 싶어 하잖아." 아이가 당신 어깨에 머리를 기댔다. "나 갈 때도 울어 줘. 조금만."' },

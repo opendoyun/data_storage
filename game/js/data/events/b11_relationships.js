@@ -67,8 +67,8 @@ export default [
           result: '기사 하나가 헛간 문을 열었다. 리온은 순순히 걸어 나와 당신에게 깊이 고개를 숙였다. "폐를 끼쳤습니다." 그리고 말에 올랐다.' } },
       { label: '리온이 스스로 정하게 한다', effects: { 'rel.leon': +5, 'stat.moral': +3, trust: +2, 'flag.b11_leon_half_truth': true },
         result: '헛간에서 걸어 나온 리온을 보고 기사들이 무릎을 꿇으려 했다. 리온이 고개를 젓자 그대로 멈췄다. 리온이 {name을} 돌아보며 작게 웃었다. "다음엔 정문으로 올게. 그때 다 말할게."' },
-      { label: '사제로서 손님을 감싼다', conditions: ["guardian == 'priest'"], effects: { 'rel.leon': +6, 'stat.faith': +3, reputation: +1 }, next: 'b11_leon_hayloft_dawn',
-        result: '"이 지붕 아래 든 손님은 하늘의 손님이오. 날이 밝으면 제 발로 돌아갈 것이오." 기사들은 사제의 말에 고개를 숙이고 물러났다.' },
+      { label: '옛 사제의 말로 손님을 감싼다', conditions: ["guardian == 'priest'"], effects: { 'rel.leon': +6, 'stat.faith': +3, reputation: +1 }, next: 'b11_leon_hayloft_dawn',
+        result: '"이 지붕 아래 든 손님은 하늘의 손님이오. 날이 밝으면 제 발로 돌아갈 것이오." 기사들은 옛 사제의 말에 고개를 숙이고 물러났다.' },
       { label: '헛간을 가리킨다', effects: { 'rel.leon': -6, reputation: +3, 'stat.moral': +2, trust: -3 },
         result: '기사들은 정중히 감사를 표했다. 끌려 나가던 리온은 {name과} 눈이 마주치자 고개를 돌렸다. 아이는 그날 아침을 먹지 않았다.' },
     ],
@@ -123,10 +123,13 @@ export default [
 
   // ══ 리온: 16세 이후 (연애는 수줍게 · 이어지지 않는 길도 존중) ═══════════
   {
-    id: 'b11_leon_lantern', title: '등불 두 개', age: [16, 17], weight: 2.5, romance: true, npc: 'leon',
-    // 정체 발각(core leon_truth, 14~16) 뒤에 열린다. 발각이 끝내 없었다면 17세에 이 장면이 곧 정체를 밝히는 자리가 된다.
+    id: 'b11_leon_lantern', title: '등불 두 개', age: [16, 17], season: 'summer', weight: 5, romance: true, npc: 'leon',
+    // 정체 발각(core leon_truth, 14~16) 뒤에 열린다. 발각이 끝내 없었다면 17세에 이 장면이 곧 정체를 밝히는 자리가 된다(text가 갈린다).
+    // 강가 등불 축제는 여름밤(b03_lantern_night)이라 season: 'summer' — 석 달 창이라 weight를 높였다.
     conditions: ['flag.met_leon', 'rel.leon >= 55', '!flag.leon_love', (s) => (s.seen.leon_truth || 0) >= 1 || s.age >= 17],
-    text: '리온이 정문으로 찾아왔다. 왕실 문장을 수놓은 망토를 이제는 숨기지 않았다. 우물가에서 돌을 던지던 소년이 당신 앞에서 모자를 벗고 정중히 인사한다. 손에는 등불 두 개. "오늘 밤 강가 등불 축제에 {name과} 함께 가도 될까요?" 문 뒤에서 {name이} 숨을 죽이고 있다.',
+    text: (s) => (s.seen.leon_truth || s.seen.leon_confession)
+      ? `${s.seen.leon_confession ? '이번에는 리온이 당신에게 먼저 허락을 구하러 정문으로 찾아왔다.' : '리온이 정문으로 찾아왔다.'} 왕실 문장을 수놓은 망토를 이제는 숨기지 않았다. 우물가에서 돌을 던지던 소년이 당신 앞에서 모자를 벗고 정중히 인사한다. 손에는 등불 두 개. "오늘 밤 강가 등불 축제에 {name과} 함께 가도 될까요?" 문 뒤에서 {name이} 숨을 죽이고 있다.`
+      : '리온이 정문으로 찾아왔다. 망토에 수놓인 것은 왕실 문장이었다. 우물가에서 돌을 던지던 그 소년이 왕자였다. 리온이 당신 앞에서 모자를 벗고 고개를 숙였다. "그동안 숨겨서 죄송했습니다." 손에는 등불 두 개. "오늘 밤 강가 등불 축제에 {name과} 함께 가도 될까요?" 문 뒤에서 {name이} 숨을 죽이고 있다.',
     choices: [
       { label: '다녀오라고 한다', effects: { trust: +3, 'rel.leon': +3, 'pers.roman': +2 }, next: 'b11_leon_lantern_river',
         result: '{name은} 흰 숄을 두 번이나 고쳐 둘렀다. "다녀올게!" 문이 닫히고, 큐브가 창가에 붙어 떨어지지 않았다.' },
@@ -189,7 +192,7 @@ export default [
       { label: '둘 다 지켜 보라고 한다', effects: { 'pers.ambit': +4, 'rel.leon': +5, 'stat.cult': +4, reputation: +4 },
         result: '"포기하지 말고 설득해. 나도 같이 할게." 아이가 먼저 말했다. 그날부터 {name은} 왕실 법전을 빌려 와 밤마다 읽었다.' },
       { label: '들판도 나쁘지 않다고 한다', effects: { 'pers.ambit': -3, 'rel.leon': +8, stress: -5, 'stat.sens': +3 },
-        result: '리온이 처음으로 소리 내 웃었다. "그 말이 듣고 싶었나 봐요." 아이는 리온에게 밭고랑 고르는 법부터 가르치겠다고 했다.' },
+        result: '리온이 처음으로 소리 내 웃었다. "그 말이 듣고 싶었나 봐요." 왕관을 쓰게 되든 내려놓게 되든, 아이는 리온에게 밭고랑 고르는 법부터 가르치겠다고 했다.' },
     ],
   },
   {
@@ -214,6 +217,7 @@ export default [
   // ══ 테오도라: 라이벌에서 평생의 라이벌로 ════════════════════════════════
   {
     id: 'b11_theo_rank', title: '게시판의 두 이름', age: [12, 13], weight: 2, npc: 'theodora', requiresActivity: ['school', 'etiquette'],
+    conditions: ['seen.theodora_rival >= 1'], // 첫 만남(core theodora_rival, 12세 1월) 뒤에만
     text: '왕도 예절학교와 읍내 학교가 다달이 함께 치르는 학력 시험. 광장 게시판에 석차가 붙었다. 1등 테오도라, 2등 {name}. 반 점 차이였다. 테오도라가 부채로 게시판을 톡톡 쳤다. "다음 달에 지는 쪽이 한 달 동안 이긴 쪽 책가방 들기. 무섭니?"',
     choices: [
       { label: '내기를 받게 한다', check: { stat: 'int', dc: 110 }, minigame: 'exam',
@@ -308,7 +312,7 @@ export default [
   {
     id: 'b11_theo_sabotage', title: '끊어진 구두끈', age: [14, 16], weight: 1.8, image: 'bg/etiquette_school',
     conditions: ['rel.theodora >= 15'],
-    text: '예절학교 봄 발표회 날. 대기실에 둔 {name}의 춤 구두 끈이 가위로 싹둑 잘려 있었다. 누군가 속삭였다. "테오도라가 마지막으로 나갔대." 테오도라는 새파랗게 질려 서 있었다. 순서까지는 열 곡이 남았다.',
+    text: '예절학교 발표회 날. 대기실에 둔 {name}의 춤 구두 끈이 가위로 싹둑 잘려 있었다. 누군가 속삭였다. "테오도라가 마지막으로 나갔대." 테오도라는 새파랗게 질려 서 있었다. 순서까지는 열 곡이 남았다.',
     choices: [
       { label: '테오도라를 다그치게 한다', effects: { 'rel.theodora': -10, stress: +5, 'pers.agree': -2, reputation: -2 },
         result: '"내가 그랬다고 생각해?" 테오도라의 목소리가 떨렸다. 범인은 테오도라 뒤를 따라다니던 아이였다. 사과했지만 테오도라는 한동안 대답하지 않았다.' },
@@ -324,7 +328,8 @@ export default [
   {
     id: 'b11_theo_ball_final', title: '마지막 왈츠', age: [16, 17], weight: 2.5, npc: 'theodora', image: 'bg/ballroom',
     conditions: ['rel.theodora >= 30', 'stat.eti >= 150'],
-    text: '왕궁 가을 무도회의 마지막 곡 "달빛 왈츠". 첫 스텝은 그해 가장 빛난 한 사람에게 주어진다. 후보는 둘. 테오도라가 진홍 드레스 자락을 쥐고 다가왔다. "이번이 마지막이야. 내년엔 우리 둘 다 열여덟이니까."',
+    // 계절·나이 고정 없음(16~17세) — 가을 무도회라 부르지 않고, '열여덟' 대사는 17세에만.
+    text: (s) => `왕궁 무도회의 마지막 곡 "달빛 왈츠". 첫 스텝은 그해 가장 빛난 한 사람에게 주어진다. 후보는 둘. 테오도라가 진홍 드레스 자락을 쥐고 다가왔다. ${s.age >= 17 ? '"이번이 마지막이야. 내년엔 우리 둘 다 열여덟이니까."' : '"이번이 마지막일지도 몰라. 우리도 곧 어른이잖아."'}`,
     choices: [
       { label: '정면으로 겨루게 한다', check: { stat: 'eti', dc: 300, bonus: (s) => s.stats.chm * 0.25 }, minigame: 'ball',
         success: { effects: { 'flag.ball_won': true, 'stat.eti': +8, reputation: +8, 'rel.theodora': +6, 'flag.b11_rival': true },
@@ -491,7 +496,7 @@ export default [
   },
   {
     id: 'b11_mentors_supper', title: '세 스승의 저녁', age: [15, 17], weight: 2.5,
-    conditions: ['rel.garrett >= 35', 'rel.elda >= 35', 'rel.loren >= 25'],
+    conditions: ['flag.met_elda', 'rel.garrett >= 35', 'rel.elda >= 35', 'rel.loren >= 25'],
     text: '{name이} 몰래 초대장 세 장을 보냈다. 가렛, 엘다, 마담 로렌. 가렛이 포크를 주먹으로 쥐자 로렌의 외알 안경이 번뜩였고, 엘다는 웃음을 참느라 어깨를 떨었다. 디저트 무렵 셋이 동시에 잔을 들었다. "우리 제자를 위해."',
     choices: [
       { label: '숫돌 이야기로 답한다', conditions: ['flag.b11_garrett_mended'], effects: { 'stat.str': +4, 'rel.garrett': +6, 'pers.extro': +2 },

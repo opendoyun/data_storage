@@ -335,9 +335,9 @@ export default [
     ],
   },
   {
-    id: 'b04a_tailor_contest', title: '봄 품평회 공모', age: [16, 17], weight: 3.5, image: 'bg/guild_hall',
+    id: 'b04a_tailor_contest', title: '품평회 공모', age: [16, 17], weight: 3.5, image: 'bg/guild_hall',
     conditions: ['flag.b04a_tailor_name', 'mastery.sewing >= 12'],
-    text: `왕도 의상 길드가 봄 품평회 공모를 냈다. 신인 재봉사 셋을 뽑아 대극장 무대에 옷을 세운다. 공모 서류의 추천인 칸에는 누군가 이미 이름을 적어 두었다. 테오도라였다. {name이} 그림첩을 펼쳤다. "{call}, 어떤 옷이 좋을까?"`,
+    text: `왕도 의상 길드가 품평회 공모를 냈다. 신인 재봉사 셋을 뽑아 대극장 무대에 옷을 세운다. 공모 서류의 추천인 칸에는 누군가 이미 이름을 적어 두었다. 테오도라였다. {name이} 그림첩을 펼쳤다. "{call}, 어떤 옷이 좋을까?"`,
     choices: [
       { label: '흑백에 금빛 별을', check: { stat: 'sens', dc: 330 },
         success: { effects: { 'stat.sens': +8, 'stat.cult': +2, 'pers.roman': +2, reputation: +2 },
@@ -410,7 +410,7 @@ export default [
       { label: '걸작을 벼려 보자', effects: { 'stat.str': +4, 'pers.ambit': +3, stress: +5 },
         result: `{name은} 그날부터 대장간에서 먹고 잤다. 화덕 불빛 속에서 별철이 서서히 붉어졌다. 도르완 영감이 풀무 앞에 섰다. "불은 내가 본다. 쇠는 네가 봐라."`, next: 'b04a_smith_forge' },
       { label: '엘다에게 먼저 보인다', conditions: ['flag.met_elda'], effects: { 'rel.elda': +8, 'stat.mag': +5, 'flag.b04a_star_blessed': true },
-        result: `엘다가 별철을 두 손으로 감쌌다. "이건 네 거예요. 너와 함께 떨어진 별의 조각." 엘다는 쇠 위에 작은 축복의 문양을 그렸다. "이제 벼려요. 두려워 말고."`, next: 'b04a_smith_forge' },
+        result: `엘다가 별철을 두 손으로 감쌌다. "이건 {name}의 거예요. {name과} 함께 떨어진 별의 조각." 엘다는 쇠 위에 작은 축복의 문양을 그렸다. "이제 벼려요. 두려워 말고."`, next: 'b04a_smith_forge' },
       { label: '상인 길드에 판다', effects: { gold: +300, 'stat.elo': +4, 'pers.roman': -3 },
         result: (s) => s.personality.roman >= 15
           ? `{name은} 금화 자루를 받고도 한참 길드 문 앞에 서 있었다. "……잘한 거지?" 대답 대신 당신은 아이 어깨를 감쌌다.`
@@ -430,8 +430,9 @@ export default [
           result: `쨍. 칼날에 머리카락만 한 금이 갔다. {name은} 한참 그 금을 손가락으로 쓸었다. 영감이 말했다. "별철은 아직 남았다. 첫 걸작은 원래 두 번째에 나오는 법이지."` } },
       { label: '영감과 함께 담가라', effects: { 'flag.masterwork': true, 'stat.str': +6, 'stat.moral': +4, 'pers.agree': +2, reputation: +4 },
         result: `둘이 함께 칼자루를 잡고 물통에 담갔다. 칼날에는 두 이름이 새겨졌다. 도르완, 그리고 {name}. "명장의 첫걸음은 남의 손을 빌릴 줄 아는 거다."` },
-      { label: '옛 검의 자루를 내준다', conditions: ["guardian == 'knight'"], effects: { 'flag.masterwork': true, trust: +8, 'stat.str': +6, 'stat.cult': +3 },
-        result: `당신은 기사단 시절의 검에서 자루를 풀어 건넸다. {name은} 별철 칼날을 그 자루에 맞췄다. "날은 내 거, 손잡이는 {call} 거. 그럼 이 칼은 우리 거야."` },
+      // 벽에 걸린 '기사의 검'은 b06에서 팔렸을 수 있다 — 따로 간직해 온 예비 칼자루로.
+      { label: '간직한 옛 칼자루를 내준다', conditions: ["guardian == 'knight'"], effects: { 'flag.masterwork': true, trust: +8, 'stat.str': +6, 'stat.cult': +3 },
+        result: `당신은 기사단 시절부터 간직해 온 예비 칼자루를 꺼내 건넸다. {name은} 별철 칼날을 그 자루에 맞췄다. "날은 내 거, 손잡이는 {call} 거. 그럼 이 칼은 우리 거야."` },
       { label: '쟁기날로 벼린다', effects: { 'stat.hp': +6, 'stat.moral': +6, reputation: +5, 'pers.good': +2, 'pers.ambit': -2 },
         result: `{name은} 마지막 순간 망치를 바꿔 쥐었다. 별철은 칼이 아니라 쟁기날이 되었다. 그 쟁기가 지나간 밭은 이듬해 유난히 잘 여물었다. 영감은 "흠" 하고 웃었다.` },
     ],
@@ -457,9 +458,9 @@ export default [
 
   // ── 궁정악사 ─────────────────────────────────────────────────────────
   {
-    id: 'b04a_art_recital', title: '연말 연주회', age: [16, 17], weight: 2.5, image: 'bg/theater_stage',
+    id: 'b04a_art_recital', title: '정기 연주회', age: [16, 17], weight: 2.5, image: 'bg/theater_stage',
     conditions: ['stat.sens >= 250', '!flag.art_path'], requiresActivity: 'art',
-    text: `예술원 연말 연주회. 순서표 맨 끝에 {name}의 이름이 있다. 객석 셋째 줄에 궁정 악단의 부악장이 앉았다는 소문에 대기실이 술렁였다. {name이} 악보 두 장을 들고 왔다. 하나는 모두가 아는 곡, 하나는 아무도 모르는 자작곡이다.`,
+    text: `예술원 정기 연주회. 순서표 맨 끝에 {name}의 이름이 있다. 객석 셋째 줄에 궁정 악단의 부악장이 앉았다는 소문에 대기실이 술렁였다. {name이} 악보 두 장을 들고 왔다. 하나는 모두가 아는 곡, 하나는 아무도 모르는 자작곡이다.`,
     choices: [
       { label: '네 곡을 연주해', check: { stat: 'sens', dc: 380, bonus: (s) => s.stats.cult * 0.2 },
         success: { effects: { 'flag.art_path': true, 'stat.sens': +10, 'stat.chm': +4, reputation: +8, 'pers.roman': +2 },

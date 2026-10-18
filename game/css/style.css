@@ -1,7 +1,8 @@
 :root{color-scheme:dark;--bg:#120d1f;--panel:#1d1631;--panel2:#261d40;--ink:#efe8ff;--muted:#a79fc4;--gold:#e7c36a;--line:#3a2d5c;--accent:#9b7dff;--danger:#ff7a7a;--ok:#7fd1a0;
  --body:#e06c6c;--mind:#6c9ce0;--social:#e0b84a;--inner:#9bd16c;--font:"Pretendard","Noto Sans KR","Apple SD Gothic Neo",system-ui,sans-serif}
 *{box-sizing:border-box}html,body{margin:0;height:100%}
-body{background:radial-gradient(1200px 600px at 50% -10%,#2a1f4d 0%,var(--bg) 60%);color:var(--ink);font-family:var(--font);font-size:15px;line-height:1.5}
+/* 배경은 캔버스로 전파되며 루트 상자(한 화면 높이) 크기로 그려진다: 반복하면 화면 높이마다 이음매가 생기므로 한 번만 그리고 아래는 단색 */
+body{background:radial-gradient(1200px 600px at 50% -10%,#2a1f4d 0%,var(--bg) 60%);background-repeat:no-repeat;background-color:var(--bg);color:var(--ink);font-family:var(--font);font-size:15px;line-height:1.5}
 button{font:inherit;cursor:pointer;border:1px solid var(--line);background:var(--panel2);color:var(--ink);border-radius:10px;padding:8px 14px;transition:.15s}
 button:hover{border-color:var(--accent);background:#2f2452}button:disabled{opacity:.45;cursor:not-allowed}
 button.primary{background:linear-gradient(135deg,#7c5cff,#b48cff);border:none;color:#fff;font-weight:700}
@@ -57,6 +58,7 @@ header.top h1{font-size:20px;margin:0;letter-spacing:.04em}header.top h1 span{co
 /* 모달 */
 .modal-bg{position:fixed;inset:0;background:rgba(6,3,14,.78);display:flex;align-items:center;justify-content:center;padding:16px;z-index:50;backdrop-filter:blur(3px)}
 .modal{background:var(--panel);border:1px solid var(--line);border-radius:18px;max-width:640px;width:100%;max-height:92vh;overflow:auto;padding:20px;box-shadow:0 20px 60px rgba(0,0,0,.6)}
+.modal:focus{outline:none}
 .modal h3{margin:0 0 10px;font-size:20px}.modal p{white-space:pre-wrap}
 .modal .evimg{width:100%;aspect-ratio:16/7;border-radius:12px;object-fit:cover;margin-bottom:12px;background:linear-gradient(135deg,#2a1f4d,#140f22);display:block}
 .choices{display:grid;gap:8px;margin-top:14px}.choices button{text-align:left;padding:12px 14px}.choices small{color:var(--muted);display:block;font-size:11px}
@@ -68,21 +70,28 @@ header.top h1{font-size:20px;margin:0;letter-spacing:.04em}header.top h1 span{co
 .title{min-height:80vh;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:16px}
 .title h1{font-size:44px;margin:0;letter-spacing:.06em;background:linear-gradient(90deg,#fff,#e7c36a);-webkit-background-clip:text;background-clip:text;color:transparent}
 .title .sub{color:var(--muted)}
-.form{display:grid;grid-template-columns:120px 1fr;gap:10px;align-items:center;text-align:left;background:var(--panel);padding:18px;border-radius:16px;border:1px solid var(--line);min-width:min(520px,95vw)}
+.form{display:grid;grid-template-columns:120px minmax(0,1fr);gap:10px;align-items:center;text-align:left;background:var(--panel);padding:18px;border-radius:16px;border:1px solid var(--line);min-width:min(520px,95vw)}
 .form .full{grid-column:1/-1;display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+.form input,.form select{min-width:0}
+@media(max-width:480px){.form{grid-template-columns:minmax(0,1fr);min-width:0;width:100%;gap:6px 10px}.form>label{margin-top:4px}}
 .swatches{display:flex;gap:6px}.swatch{width:26px;height:26px;border-radius:50%;border:2px solid transparent;cursor:pointer}.swatch.on{border-color:#fff}
 /* 엔딩 */
 .ending{max-width:760px;margin:0 auto}.ending .epi{font-size:17px;line-height:1.9;background:var(--panel);padding:20px;border-radius:16px;border:1px solid var(--line)}
+.ending-hero{display:grid;grid-template-columns:200px minmax(0,1fr);gap:16px;align-items:start}
+@media(max-width:560px){.ending-hero{grid-template-columns:minmax(0,1fr)}.ending-hero .portrait{width:100%;max-width:200px;margin:0 auto}}
 .ending .words div{padding:8px 0;border-bottom:1px dashed var(--line);font-style:italic}
 .toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:#2f2452;border:1px solid var(--accent);padding:8px 16px;border-radius:999px;font-size:13px;z-index:60;animation:fade 2.4s forwards}
 @keyframes fade{0%{opacity:0;transform:translate(-50%,10px)}10%,80%{opacity:1;transform:translate(-50%,0)}100%{opacity:0}}
 .tag{display:inline-block;font-size:11px;padding:2px 8px;border-radius:999px;background:#0f0b1c;border:1px solid var(--line);color:var(--muted);margin-right:4px}
 
 /* ── 디에게틱 UI (GDD 6): 거실 · 벽걸이 달력 · 책장 액자 · 육아 일기 ───────────── */
+/* 덧칠 층도 fixed: 거실 그림(fixed)과 함께 화면에 붙어 있어 스크롤해도 어두운 막이 끊기지 않는다.
+   틴트는 한 번만 그리고(no-repeat) 그 아래는 덧칠 끝 색과 같은 단색 → 긴 화면에서 이음매 없음 */
 body.in-room{background:
-  linear-gradient(180deg,rgba(14,10,26,.72),rgba(14,10,26,.9)),
+  linear-gradient(180deg,rgba(14,10,26,.72),rgba(14,10,26,.9)) fixed,
   var(--room-img,none) center/cover fixed,
-  var(--room-tint,radial-gradient(1200px 600px at 50% -10%,#2a1f4d 0%,var(--bg) 60%))}
+  var(--room-tint,radial-gradient(1200px 600px at 50% -10%,#2a1f4d 0%,var(--bg) 60%));
+  background-repeat:no-repeat;background-color:#0e0a1a}
 body[data-season=spring]{--room-tint:radial-gradient(1100px 600px at 20% -10%,#3b2a4f 0%,#1a1328 55%,#120d1f 100%)}
 body[data-season=summer]{--room-tint:radial-gradient(1100px 600px at 80% -10%,#24384a 0%,#16182b 55%,#120d1f 100%)}
 body[data-season=autumn]{--room-tint:radial-gradient(1100px 600px at 30% -10%,#4a2f22 0%,#21162a 55%,#120d1f 100%)}

@@ -13,7 +13,7 @@ import { STATS } from '../stats.js';
 //   가렛 인연은 knight에서 가장 강하다: 대련 중 고백(b06_knight_bout) 또는 술자리 고백(b06_name_witness) → b06_garrett_witness → 청문에서 가렛이 증언.
 // 그 밖의 연쇄: 고향의 편지 b06_hometown_letter → b06_hometown_porch* → b06_hometown_farewell* (→ b06_guardian_birthday 콜백)
 // 출신 전용(각 2, 조건 "guardian == '<출신>'"): knight muster·bout / scholar margin·lamp / merchant loan·haggle / priest firewood·rites / adventurer map·reunion
-// 코어 플래그 콜백: guardian_sick · debt_garrett · read_letter · knows_origin · has_cat · ran_away · met_elda
+// 코어 플래그 콜백: guardian_sick · debt_garrett · seen.secret_letter_confront(편지를 몰래 읽음) · knows_origin · has_cat · ran_away · met_elda
 
 const P = (s) => PAST[s.guardian] || PAST.knight;
 
@@ -484,7 +484,7 @@ export default [
       { label: '과자점에 데려가 넘어간다', effects: { gold: -30, stress: -5, trust: +2, 'pers.roman': -1 },
         result: `{name은} 과자를 받고 고맙다고 했다. 그리고 물었다. "근데 이걸로 미안한 거 끝난 거야?" 당신은 대답하지 못했다.` },
       { label: '"오해받을 일을 하지 마라"', effects: { trust: -8, 'pers.agree': -3, stress: +6 },
-        result: (s) => `"애초에 오해받을 행동을—" 말이 끝나기 전에 문이 닫혔다. 그 뒤로 {name은} 찬장 근처에 가지 않았다.${s.flags.read_letter ? ' 문 너머로 작은 목소리가 들렸다. "내 편지도 몰래 읽었으면서."' : ' 당신이 시키지 않는 한.'}` },
+        result: (s) => `"애초에 오해받을 행동을—" 말이 끝나기 전에 문이 닫혔다. 그 뒤로 {name은} 찬장 근처에 가지 않았다.${s.seen?.secret_letter_confront ? ' 문 너머로 작은 목소리가 들렸다. "내 편지도 몰래 읽었으면서."' : ' 당신이 시키지 않는 한.'}` },
       { label: '원고 일까지 함께 사과한다', conditions: ['flag.b06_scholar_pride'], effects: { trust: +12, 'pers.agree': +2, 'stat.int': +2 },
         result: `"그때 원고 일도 미안했다. 네가 맞았다." {name이} 눈을 동그랗게 떴다. "그걸 아직 기억해?" "매일 봤다. 붉은 글씨." 아이가 웃다가 울었다.` },
     ],

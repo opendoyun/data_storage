@@ -12,8 +12,8 @@ const ENDINGS_CORE = [
   { id: 'diplomat', name: '외교관', cat: '왕실/정치', weights: { elo: 0.9, cult: 0.6, eti: 0.5, int: 0.4 }, pers: { extro: 0.3, ambit: 0.2 },
     gates: ['stat.elo >= 350', 'stat.cult >= 250'], bonus: [],
     epilogue: '{name은} 세 나라의 말을 하고 네 나라의 마음을 읽는다. 전쟁 전조는 그녀의 테이블에서 두 번 멈췄다.' },
-  { id: 'chancellor', name: '재상', cat: '왕실/정치', weights: { int: 0.9, elo: 0.6, cult: 0.5, moral: 0.3 }, pers: { ambit: 0.5, roman: -0.2 },
-    gates: ['stat.int >= 450', 'stat.elo >= 250', 'reputation >= 30'], bonus: [{ when: ['flag.scholar_path'], add: 100 }],
+  { id: 'chancellor', name: '재상', cat: '왕실/정치', weights: { int: 0.8, elo: 0.6, cult: 0.5, moral: 0.3 }, pers: { ambit: 0.5, roman: -0.2 },
+    gates: ['stat.int >= 450', 'stat.elo >= 280', 'reputation >= 30'], bonus: [{ when: ['flag.scholar_path'], add: 100 }],
     epilogue: '왕국 최연소 재상. {name}의 서명이 들어간 법령은 늘 마지막 줄에 "평원의 아이들에게"라는 조항이 있다.' },
 
   // ── 무예 ──────────────────────────────────────────────────────────
@@ -34,7 +34,7 @@ const ENDINGS_CORE = [
   { id: 'archmage', name: '대마법사', cat: '학문/마법', weights: { mag: 1.0, int: 0.6, sens: 0.3 }, pers: { ambit: 0.3, roman: 0.2 },
     gates: ['stat.mag >= 450', 'flag.magic_awake'], bonus: [{ when: ['flag.tower_lessons'], add: 150 }, { when: ['flag.tower_choice_hers'], add: 80 }],
     epilogue: '탑의 가장 높은 방. {name은} 창문을 늘 평원 쪽으로 열어 둔다. 어머니가 도망쳤던 그 탑을, 딸은 집으로 만들었다.' },
-  { id: 'royal_scholar', name: '왕실학자', cat: '학문/마법', weights: { int: 1.0, cult: 0.5, sens: 0.2 }, pers: { extro: -0.2, ambit: 0.2 },
+  { id: 'royal_scholar', name: '왕실학자', cat: '학문/마법', weights: { int: 1.1, cult: 0.5, sens: 0.2 }, pers: { extro: -0.2, ambit: 0.2 },
     gates: ['stat.int >= 400'], bonus: [{ when: ['flag.scholar_path'], add: 120 }],
     epilogue: '{name}의 첫 저서 제목은 「별이 떨어지는 조건에 대하여」. 서문은 단 한 줄. "나를 주워 준 사람에게."' },
   { id: 'alchemist', name: '연금술사', cat: '학문/마법', weights: { mag: 0.7, int: 0.7, agi: 0.2 }, pers: { roman: -0.2, good: -0.1 },
@@ -107,7 +107,7 @@ const ENDINGS_CORE = [
 
   // ── 히든 ──────────────────────────────────────────────────────────
   { id: 'star_goddess', name: '별의 여신', cat: '히든', hidden: true, weights: { mag: 1, sens: 1, faith: 1 }, pers: {},
-    gates: ['flag.knows_origin', 'flag.tower_choice_hers', 'flag.final_hers', 'stat.mag >= 400', 'trust >= 70'], bonus: [],
+    gates: ['flag.knows_origin', 'flag.tower_choice_hers', 'flag.final_hers', 'stat.mag >= 400', 'trust >= 70', 'seen.b05_star_ascent >= 1'], bonus: [], // 에필로그가 하늘로 올라갔다 돌아온 밤(b05_star_ascent)을 전제한다
     epilogue: '세 개의 달이 겹친 밤, {name은} 하늘로 올라갔다. 그리고 내려왔다. "다녀왔어." 그 뒤로 왕국에는 네 번째 달이 뜬다. 평원의 집 바로 위에.' },
   { id: 'world_traveler', name: '세계 여행자', cat: '히든', hidden: true, weights: { agi: 1, elo: 1, sens: 1 }, pers: {},
     gates: ['count.autonomy >= 40', 'count.adventures >= 12', 'flag.secret_adventure', 'flag.final_hers', 'trust >= 70'], bonus: [],

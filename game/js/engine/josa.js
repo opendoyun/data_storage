@@ -3,10 +3,17 @@
 export function hasBatchim(word) {
   const ch = String(word).trim().slice(-1);
   const code = ch.charCodeAt(0) - 0xAC00;
-  if (code < 0 || code > 11171) return /[0-9LMNRlmnr]$/.test(ch); // 비한글: 대략 처리
+  // 비한글: 대략 처리. 숫자는 한자어 읽기 기준 — 0 영·1 일·3 삼·6 육·7 칠·8 팔은 받침, 2 이·4 사·5 오·9 구는 받침 없음
+  if (code < 0 || code > 11171) return /[013678LMNRlmnr]$/.test(ch);
   return code % 28 !== 0;
 }
-function rieulFinal(word) { const code = String(word).trim().slice(-1).charCodeAt(0) - 0xAC00; return code >= 0 && code <= 11171 && code % 28 === 8; }
+// ㄹ 받침: '으로' 대신 '로'. 비한글은 1 일·7 칠·8 팔, 영문 l
+function rieulFinal(word) {
+  const ch = String(word).trim().slice(-1);
+  const code = ch.charCodeAt(0) - 0xAC00;
+  if (code < 0 || code > 11171) return /[178lL]$/.test(ch);
+  return code % 28 === 8;
+}
 const PAIRS = {
   '이': ['이', '가'], '가': ['이', '가'], '은': ['은', '는'], '는': ['은', '는'], '을': ['을', '를'], '를': ['을', '를'],
   '과': ['과', '와'], '와': ['과', '와'], '아': ['아', '야'], '야': ['아', '야'], '이랑': ['이랑', '랑'], '랑': ['이랑', '랑'],

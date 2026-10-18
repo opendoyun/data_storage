@@ -72,7 +72,7 @@
 
 | 플래그 | 의미 | 세팅 | 읽음 |
 |---|---|---|---|
-| `met_elda` `met_leon` | 만남 | core, b01 | 다수 |
+| `met_elda` `met_leon` | 만남 | core, b01 (`met_elda`는 연간 결정 annual도) | 다수 |
 | `magic_awake` | 마력 각성 | core, b13 | core, b05, 엔딩 |
 | `knows_origin` | 출생의 진실을 앎 | core, b05 | 엔딩 |
 | `elda_secret_1` | 엘다가 어머니를 언급 | core, b05 | core |

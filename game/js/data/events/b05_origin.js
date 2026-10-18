@@ -104,7 +104,7 @@ export default [
         success: { effects: { 'stat.eti': +6, reputation: +6, 'rel.loren': +3, 'pers.ambit': +2 }, result: '{name은} 치맛자락을 쥐고 흔들림 없이 무릎을 굽혔다. 수군거림이 멎었다. 누군가 "본데가 있군" 하고 중얼거렸다.' },
         fail: { effects: { 'stat.eti': +3, stress: +8, 'pers.extro': -2 }, result: '인사 도중 발이 꼬였다. 웃음소리가 번졌다. 돌아오는 마차에서 아이는 창밖만 봤다. "다시는 안 와."' } },
       { label: '리온이 곁에 서 준다', conditions: ['flag.met_leon', 'rel.leon >= 30'], effects: { 'rel.leon': +6, 'stat.eti': +3, stress: -4 },
-        result: '귀족들 틈에서 리온이 걸어 나와 아이 옆에 섰다. 이상하게도 귀족들이 길을 비켰다. 리온이 속삭였다. "턱만 들어. 나머진 저 사람들이 알아서 해."' },
+        result: '귀족들 틈에서 리온이 걸어 나와 아이 옆에 섰다. 귀족들이 말없이 길을 비켰다. 리온이 속삭였다. "턱만 들어. 나머진 저 사람들이 알아서 해."' },
       { label: '일찍 자리를 뜬다', effects: { trust: +3, reputation: -3, stress: -5, 'pers.ambit': -1 },
         result: '"오늘은 여기까지 하겠습니다." 당신은 아이 손을 잡고 돌아섰다. 등 뒤의 시선이 따가웠지만, 아이의 손은 따뜻했다.' },
     ] },
@@ -168,7 +168,7 @@ export default [
       { label: '"쓸데없는 소리"라며 자른다', effects: { trust: -7, 'pers.agree': -3, stress: +5, 'flag.b05_doubt': true },
         result: '"밥이나 먹어." 아이는 숟가락을 다시 들지 않았다. 그날부터 {name은} 당신이 편지를 받을 때마다 누구에게서 왔는지 살폈다.' },
       { label: '여관 손님 일까지 털어놓는다', conditions: ['flag.guardian_confront'], effects: { trust: +8, 'stat.elo': +2, stress: +3 },
-        result: '"그 후드 쓴 사람이 날 알아본 건, 옛날 왕도에서 스친 얼굴이라서야. 너를 찾는 줄은 몰랐어." 아이는 당신 눈을 오래 보다가 고개를 끄덕였다.' },
+        result: '"그 후드 쓴 사람이 날 알아본 건, 옛날 왕도에서 스친 얼굴이라서야. 너를 찾는 줄 알면서도 너한테는 말 못 했어. 미안해." 아이는 당신 눈을 오래 보다가 고개를 끄덕였다.' },
       { label: '편지를 몰래 읽은 일부터 사과한다', conditions: ['flag.read_letter', '!flag.open_talk'], effects: { trust: +8, 'pers.agree': +2, 'stat.moral': +2 },
         result: '"탑 편지를 몰래 읽은 거, 그것부터 미안해. 네가 의심하는 게 당연해." 아이 눈이 커졌다. "……먼저 말할 줄은 몰랐어."' },
     ] },
@@ -267,10 +267,13 @@ export default [
 
   // ── 발견 ② 사자 (tower_refused) ────────────────────────────────────
   { id: 'b05_envoy_return', title: '돌아온 사자', age: [16, 17], weight: 4, npc: 'envoy', conditions: ['flag.tower_refused', '!flag.mother_alive'],
-    text: '"다시 오겠다"던 사자가 정말 왔다. 이번엔 탑의 문장도 두루마리도 없이, 비에 젖은 평복 차림이었다. "탑의 사자로 온 게 아닙니다. 열몇 해 전 그분이 탑을 떠나던 밤, 뒷문 빗장을 풀어 둔 사람이 저였습니다. 이제는 따님께 진실을 말씀드려야 할 때인 것 같아서요."',
+    // 열여섯 아침(b05_sixteen_dawn) 등으로 이미 진실을 아는 아이가 많다 — 그때는 '남은 하나'(살아 있는 별)를 전하러 온다.
+    // 선택지 결과는 효과(knows_origin 세팅)가 적용된 뒤 그려지므로, 아는지 여부는 등장 시점의 text에서만 가른다.
+    text: (s) => '"다시 오겠다"던 사자가 정말 왔다. 이번엔 탑의 문장도 두루마리도 없이, 비에 젖은 평복 차림이었다. "탑의 사자로 온 게 아닙니다. 열몇 해 전 그분이 탑을 떠나던 밤, 뒷문 빗장을 풀어 둔 사람이 저였습니다. '
+      + (s.flags.knows_origin ? '따님이 아직 모르시는 게 하나 남았습니다."' : '이제는 따님께 진실을 말씀드려야 할 때인 것 같아서요."'),
     choices: [
       { label: '아이를 불러 함께 듣는다', effects: { 'flag.knows_origin': true, 'flag.mother_alive': true, trust: +6, stress: +6 }, next: 'b05_north_trail',
-        result: '사자는 다 털어놓았다. 왕실 마법사 세라핀, 하늘에 숨긴 아기, 아직 꺼지지 않은 그녀의 별. "북쪽 하늘에 떠 있습니다." {name이} 당신 손을 꽉 쥐었다.' },
+        result: '사자는 그 밤 뒷문에서 본 것을 남김없이 털어놓았다. 왕실 마법사 세라핀이 아기를 하늘에 숨기러 가던 뒷모습까지. 그리고 하나를 덧붙였다. 아직 꺼지지 않은 그녀의 별. "북쪽 하늘에 떠 있습니다." {name이} 당신 손을 꽉 쥐었다.' },
       { label: '탑에 갈지 아이가 정하게 한다', effects: { 'flag.tower_choice_hers': true, 'flag.knows_origin': true, trust: +8, 'pers.ambit': +1 },
         result: (s) => s.personality.ambit > 10
           ? '사자가 그분의 이야기를 짧게 전하고 물었다. "탑으로 오시겠습니까?" {name이} 답했다. "갈게요. 대신 제 발로, 제 이름으로." 사자가 깊이 허리를 숙였다. "그분과 똑같은 말씀을 하시는군요."'

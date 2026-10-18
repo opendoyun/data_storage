@@ -164,7 +164,7 @@ export default [
       { label: '원리를 따져 보게 한다', check: { stat: 'int', dc: 115 },
         success: { effects: { 'stat.int': +6, 'stat.mag': +4, 'pers.ambit': +2 }, result: '아이는 주문 한 줄이 거꾸로 인쇄돼 있다는 걸 찾아냈다. "실패가 아니라 오타였어!" 그 줄 옆에 붉은 잉크로 고쳐 적었다. 다시 해 보진 않았다. 아직은.' },
         fail: { effects: { 'stat.int': +2, stress: +5, 'pers.roman': +1 }, result: '몇 번을 읽어도 이유를 알 수 없었다. 아이는 책을 침대 밑에 밀어 넣었다. 버리지는 않았다.' } },
-      { label: '마법탑 견습반을 알아본다', effects: { gold: -30, 'stat.mag': +4, 'pers.ambit': +3 },
+      { label: '마법탑 견습반을 알아본다', conditions: ['!mastery.magic'], effects: { gold: -30, 'stat.mag': +4, 'pers.ambit': +3 },
         result: '"제대로 배우면, 다음엔 접시가 안 날아가?" 당신은 탑 견습반 안내문을 얻어 왔다. 아이는 그 종이를 베개 밑에 넣고 잤다.' },
     ] },
 
@@ -295,7 +295,7 @@ export default [
       { label: '기억대로 쓰게 한다', effects: { 'stat.mag': +8, 'stat.int': +5, 'pers.ambit': +2 },
         result: '아이는 기억 속 쪽지를 한 글자씩 옮겨 적었다. 획 끝은 동그랗게. 종이를 공책 사이에 끼우자 금빛이 한 번 번쩍했다. 공책은 그대로였다. 쪽지만 사라졌다.' },
       { label: '하고 싶은 말을 쓰게 한다', effects: { 'stat.sens': +6, 'pers.roman': +3, trust: +4, stress: +4 },
-        result: '아이는 수수께끼 대신 한 줄을 적었다. 「무서워도 괜찮아. {call이} 옆에 있어.」 종이가 사라진 뒤, 아이는 한참 웃다가 조금 울었다.' },
+        result: '아이는 수수께끼를 옮겨 적고, 쪽지 뒷면에 한 줄을 보탰다. 「무서워도 괜찮아. {call이} 옆에 있어.」 종이가 사라진 뒤, 아이는 한참 웃다가 조금 울었다.' },
       { label: '봉인의 열쇠를 건넨다', conditions: ['flag.b13_time_sealed'], effects: { trust: +6, 'stat.mag': +6, 'stat.moral': +3 },
         result: '서랍 속 밀랍 봉인을 꺼내 아이 손에 쥐여 주었다. 아이는 봉인을 쪽지 한 장 지나갈 만큼만 열었다가 도로 닫았다. "이번 한 번만." 열쇠는 다시 당신 손에 돌아왔다.' },
       { label: '공책의 계산대로 보낸다', conditions: ['flag.b13_time_research'], effects: { 'stat.int': +10, 'stat.mag': +6, stress: +6, 'pers.roman': -2 },

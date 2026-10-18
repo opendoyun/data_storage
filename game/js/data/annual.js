@@ -12,6 +12,7 @@
 //   annual_13_capital 13세 왕도 유학                 → 왕립 도서관 열람패
 //   annual_13_harbor  13세 항구 상단 견습            → 놋쇠 나침반
 //   annual_16_debut   16세 왕도 사교계 데뷔          → 무도회용 흰 장갑
+// 공용 플래그 세팅: met_elda — 엘다와 한 해를 보내는 선택지(12세 elda·free, 13세 plains)는 만남을 겸한다.
 // label에는 이름 토큰을 쓰지 않는다(annualLog에 원문 그대로 남기 때문). text/desc/result는 토큰 사용.
 
 // 14세 '당신이 일을 더 맡는다' — 보호자 출신마다 일감이 다르다
@@ -19,8 +20,8 @@ const OVERTIME_JOB = {
   knight: '옛 기사단 동료가 넘겨준 상단 호위',
   scholar: '왕도 서기관실의 밤샘 필사',
   merchant: '옛 거래처 세 곳의 묵은 장부 정리',
-  priest: '이웃 마을들의 혼례와 장례 축복',
-  adventurer: '모험가 길드의 신참 안내',
+  priest: '이웃 마을 병자들의 밤샘 간호',
+  adventurer: '항구 상단의 산길 길잡이',
 };
 
 // 16세 '어떤 어른이 되고 싶은지 묻는다' — 대답은 아이의 성격을 따른다
@@ -39,11 +40,19 @@ export const ANNUAL = {
   11: {
     title: '열한 살, 배움의 길',
     image: 'bg/school',
-    text: '생일 케이크의 촛불이 꺼지자 큐브가 접시를 치우며 속삭였다. "주인님, 읍내 학교 입학 원서 마감이 이번 달이에요!" 창가에서는 {name이} 김 서린 유리에 손가락으로 별을 그리고 있다. 이 아이에게 세상을 어떻게 가르칠지, 올해 정해야 한다.',
+    // 일반학교(school) 활동은 10세부터 고를 수 있다 — 열 살에 이미 다닌 아이에게는 '입학'이 아니라 '정규반'이다.
+    text: (s) => (s.mastery?.school > 0
+      ? '생일 케이크의 촛불이 꺼지자 큐브가 접시를 치우며 속삭였다. "주인님, 읍내 학교 정규반 원서 마감이 이번 달이에요!" 창가에서는 {name이} 김 서린 유리에 손가락으로 별을 그리고 있다. 이 아이에게 세상을 어떻게 가르칠지, 올해 정해야 한다.'
+      : '생일 케이크의 촛불이 꺼지자 큐브가 접시를 치우며 속삭였다. "주인님, 읍내 학교 입학 원서 마감이 이번 달이에요!" 창가에서는 {name이} 김 서린 유리에 손가락으로 별을 그리고 있다. 이 아이에게 세상을 어떻게 가르칠지, 올해 정해야 한다.'),
     options: [
-      { id: 'school', label: '학교에 보낸다', desc: '읍내 학교에 입학시킨다. 또래와 부대끼며 지식과 교양을 쌓는다. (입학금 60G)', conditions: ['gold >= 60'],
+      { id: 'school', label: '학교에 보낸다', conditions: ['gold >= 60'],
+        desc: (s) => (s.mastery?.school > 0
+          ? '읍내 학교 정규반에 올린다. 또래와 부대끼며 지식과 교양을 쌓는다. (등록금 60G)'
+          : '읍내 학교에 입학시킨다. 또래와 부대끼며 지식과 교양을 쌓는다. (입학금 60G)'),
         effects: { 'stat.int': +10, 'stat.cult': +6, 'stat.elo': +3, 'pers.extro': +3, stress: +4, gold: -60 },
-        result: '입학식 날, {name은} 새 가방끈을 두 손으로 꼭 쥐고 교문을 지났다. 저녁에는 "짝꿍이 내 머리가 첫눈 같대!" 하며 하루 이야기를 쉬지 않고 쏟아냈다.' },
+        result: (s) => (s.mastery?.school > 0
+          ? '정규반 첫날, {name은} 새 가방끈을 두 손으로 꼭 쥐고 늘 다니던 교문을 지났다. 저녁에는 "새 짝꿍이 내 머리가 첫눈 같대!" 하며 하루 이야기를 쉬지 않고 쏟아냈다.'
+          : '입학식 날, {name은} 새 가방끈을 두 손으로 꼭 쥐고 교문을 지났다. 저녁에는 "짝꿍이 내 머리가 첫눈 같대!" 하며 하루 이야기를 쉬지 않고 쏟아냈다.') },
       { id: 'home', label: '집에서 직접 가르친다', desc: '당신이 아는 모든 것을 식탁에서 가르친다. 느리지만 깊다.',
         effects: { 'stat.int': +6, 'stat.moral': +5, 'stat.sens': +6, trust: +6, 'pers.extro': -3 },
         result: '식탁이 교실이 되었다. {name은} 당신이 그린 삐뚤빼뚤한 지도 위로 손가락 길을 내며 물었다. "{call}, 이 강 끝에는 뭐가 있어?" 모르는 건 함께 찾아보기로 했다.' },
@@ -63,7 +72,7 @@ export const ANNUAL = {
     text: '{name은} 부쩍 자랐다. 팔다리가 길어지고, 질문은 당신이 대답할 수 있는 것보다 빨리 늘어난다. 올해는 바깥 스승에게 한 해를 맡겨 볼까. 평원의 엘다, 항구의 가렛, 왕도의 마담 로렌. 세 사람 모두 한번 데려와 보라는 편지를 보내왔다.',
     options: [
       { id: 'elda', label: '엘다의 오두막에 보낸다', desc: '약초와 별의 이야기. 마력과 감수성이 자란다.',
-        effects: { 'stat.mag': +8, 'stat.sens': +6, 'stat.int': +4, 'rel.elda': +10, 'pers.roman': +3, 'pers.extro': -2, 'flag.annual_12_elda': true },
+        effects: { 'stat.mag': +8, 'stat.sens': +6, 'stat.int': +4, 'rel.elda': +10, 'pers.roman': +3, 'pers.extro': -2, 'flag.annual_12_elda': true, 'flag.met_elda': true },
         result: '엘다는 첫날 {name}에게 지팡이가 아니라 물뿌리개를 쥐여 주었다. "마법은 기다리는 법부터예요." 봄이 끝날 무렵, {name이} 손댄 씨앗에서만 금빛 싹이 텄다.' },
       { id: 'garrett', label: '가렛의 훈련장에 보낸다', desc: '항구 용병단의 새벽 훈련. 몸이 단단해지고 배짱이 붙는다.',
         effects: { 'stat.str': +8, 'stat.agi': +6, 'stat.hp': +5, 'rel.garrett': +10, 'pers.extro': +2, 'pers.agree': -2, stress: +5, 'flag.annual_12_garrett': true },
@@ -72,7 +81,7 @@ export const ANNUAL = {
         effects: { 'stat.eti': +10, 'stat.cult': +6, 'stat.chm': +4, 'rel.loren': +10, 'pers.ambit': +3, gold: -180, 'flag.annual_12_loren': true },
         result: '마담 로렌의 편지는 짧았다. "따님은 찻잔을 지나치게 조심스럽게 듭니다. 고칠 필요가 없는 버릇이지요." 돌아온 {name은} 인사할 때 치맛자락을 아주 조금 집었다.' },
       { id: 'free', label: '아이에게 스승을 고르게 한다', desc: '세 사람의 편지를 모두 보여 주고, 고르는 건 아이에게 맡긴다.',
-        effects: { trust: +8, 'pers.agree': +3, 'stat.elo': +5, 'rel.elda': +3, 'rel.garrett': +3, 'rel.loren': +3 },
+        effects: { trust: +8, 'pers.agree': +3, 'stat.elo': +5, 'rel.elda': +3, 'rel.garrett': +3, 'rel.loren': +3, 'flag.met_elda': true },
         result: '편지 세 통을 한참 들여다보던 {name이} 고개를 들었다. "셋 다 한 번씩 만나 보고 정하면 안 돼?" 한 해는 세 사람 사이를 오가는 여행이 되었고, 셋 모두 {name을} 기억했다.' },
     ],
   },
@@ -85,12 +94,12 @@ export const ANNUAL = {
     options: [
       { id: 'capital', label: '왕도로 유학 보낸다', desc: '왕립 학당 기숙사에서 한 해. 지식과 예절이 크게 늘지만 비싸다. (250G)', conditions: ['gold >= 250'],
         effects: { 'stat.int': +10, 'stat.eti': +8, 'stat.cult': +6, 'pers.ambit': +4, 'rel.theodora': +6, stress: +6, gold: -250, 'flag.annual_13_capital': true },
-        result: '왕도의 편지는 석 달 내내 "테오도라라는 애가 자꾸 시비를 걸어"였다가, 넉 달째부터 "테오도라랑 도서관 갔어"로 바뀌었다. 겨울에 돌아온 {name은} 포크를 바깥쪽부터 집었다.' },
+        result: '왕도의 편지는 석 달 내내 "테오도라가 여기서도 자꾸 시비를 걸어"였다가, 넉 달째부터 "테오도라랑 도서관 갔어"로 바뀌었다. 겨울에 돌아온 {name은} 포크를 바깥쪽부터 집었다.' },
       { id: 'harbor', label: '항구 상단에 보낸다', desc: '가렛이 소개한 상단에서 견습. 흥정과 바다를 배우고 품삯도 받는다.',
         effects: { 'stat.elo': +10, 'stat.agi': +6, 'stat.chm': +4, 'pers.extro': +3, 'pers.roman': -2, 'rel.garrett': +5, stress: +4, gold: +60, 'flag.annual_13_harbor': true },
         result: '{name은} 생선값 깎는 법보다 선원들의 노래를 먼저 배웠다. 돌아온 날 짐 속에서 조개껍데기 한 줌과 은화 몇 닢이 나왔다. "은화는 저금하고, 조개는 큐브 줄 거야."' },
       { id: 'plains', label: '평원의 엘다에게 맡긴다', desc: '밭일과 약초, 고요한 밤하늘. 몸과 마음이 단단해진다.',
-        effects: { 'stat.hp': +8, 'stat.sens': +6, 'stat.mag': +5, 'rel.elda': +8, 'pers.ambit': -3, stress: -6 },
+        effects: { 'stat.hp': +8, 'stat.sens': +6, 'stat.mag': +5, 'rel.elda': +8, 'pers.ambit': -3, stress: -6, 'flag.met_elda': true },
         result: '엘다는 편지 대신 말린 꽃 한 다발을 보내왔다. 꽃잎 사이에 {name}의 쪽지가 끼워져 있었다. "{call}, 여기선 별이 땅까지 내려와. 처음으로 아무것도 안 무서웠어."' },
       { id: 'stay', label: '아이의 뜻대로 한다', desc: '지도 위 어디에 손가락을 멈출지, 아이에게 맡긴다.',
         effects: { trust: +10, 'pers.agree': +4, 'stat.sens': +5, 'stat.cult': +4, stress: -8 },
@@ -151,7 +160,7 @@ export const ANNUAL = {
         result: '데뷔 무도회 날, 계단 위에 선 {name}의 주위로 금빛 별이 하나둘 떠올랐다. 웅성거림이 잦아들었다. 마담 로렌이 부채 뒤에서 아주 작게 고개를 끄덕였다.' },
       { id: 'squire', label: '기사 견습 시험에 도전시킨다', desc: '근위대 견습 시험을 목표로 한 해 내내 단련한다.',
         effects: { 'stat.str': +8, 'stat.agi': +8, 'stat.hp': +6, 'stat.moral': +4, 'rel.garrett': +4, 'pers.ambit': +3, stress: +8 },
-        result: '시험장 모래밭에서 {name은} 세 번 넘어지고 네 번 일어났다. 근위대장이 명부에 무언가 적으며 중얼거렸다. "넘어지는 법을 아는군." 칭찬인지는 아직 모른다.' },
+        result: '연무장 모래밭에서 {name은} 세 번 넘어지고 네 번 일어났다. 지나가던 근위대장이 걸음을 멈추고 중얼거렸다. "넘어지는 법을 아는군." 칭찬인지는 아직 모른다.' },
       { id: 'vow', label: '성당의 성년 수련반에 보낸다', desc: '대주교가 이끄는 수련반. 신앙과 도덕, 그리고 마음의 고요.',
         effects: { 'stat.faith': +10, 'stat.moral': +6, 'stat.sens': +5, 'pers.good': +4, 'pers.ambit': -2, reputation: +3, stress: -3 },
         result: '수련반의 마지막 밤, 촛불 서른 개 가운데 {name}의 촛불만 금빛으로 탔다. 대주교는 아무것도 묻지 않고 그 촛불을 제단 맨 앞으로 옮겨 놓았다.' },

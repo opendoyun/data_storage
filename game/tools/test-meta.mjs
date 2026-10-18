@@ -210,7 +210,7 @@ t('유산: 최근 아이부터 최대 5명, 회차 번호', () => {
   names.forEach((n, i) => { m = M.recordRun(m, fin(i % 2 ? 'queen' : 'painter', { name: n }), day(i + 1)).meta; });
   const opts = M.newGameOptions(m, {});
   assert.deepEqual(opts.legacy.map(l => l.name), ['사', '바', '마', '라', '다']);
-  assert.deepEqual(Object.keys(opts.legacy[0]).sort(), ['cat', 'endingId', 'endingName', 'name']);
+  assert.deepEqual(Object.keys(opts.legacy[0]).sort(), ['cat', 'endingId', 'endingName', 'guardian', 'name']);
   assert.equal(opts.legacy[0].endingId, 'painter'); assert.equal(opts.legacy[1].endingName, '여왕');
   assert.equal(opts.playthrough, 8);
 });

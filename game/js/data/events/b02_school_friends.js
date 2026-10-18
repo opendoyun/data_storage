@@ -170,7 +170,7 @@ export default [
   {
     id: 'b02_play_casting', title: '학예회 배역표', age: [12, 13], season: 'autumn', weight: 3.5, image: 'bg/school',
     conditions: ['mastery.school >= 2'],
-    text: `가을 학예회 연극은 「별을 주운 양치기」. 이네스 선생님이 배역표를 붙였다. 공주 역은 오디션으로 뽑고, 용 역은 아무도 안 하려 하고, 무대 그림 그릴 사람도 모자란다. {name이} 배역표 앞에 오래 서 있었다.`,
+    text: `가을 학예회 연극은 「별을 주운 양치기」. 이네스 선생님이 배역표를 붙였다. 공주 역은 배역 시험으로 뽑고, 용 역은 아무도 안 하려 하고, 무대 그림 그릴 사람도 모자란다. {name이} 배역표 앞에 오래 서 있었다.`,
     choices: [
       { label: '공주 역에 도전해 봐', check: { stat: 'chm', dc: 110 },
         success: { effects: { 'stat.chm': +6, 'pers.extro': +2, 'pers.ambit': +2, 'flag.b02_play_lead': true },
@@ -182,7 +182,7 @@ export default [
       { label: '무대 그림을 맡아 봐', effects: { 'stat.sens': +5, 'stat.cult': +2, 'pers.extro': -1, 'flag.b02_play_painter': true },
         result: `{name은} 무대 뒤에서 커다란 밤하늘을 그렸다. 세 개의 달은 조금 삐뚤었지만 별은 하나하나 정성껏 찍었다.`, next: 'b02_play_rehearsal' },
       { label: '극단 경험을 살려 봐', conditions: ['flag.stage_star'], effects: { 'stat.chm': +4, reputation: +3, 'pers.ambit': +2, 'flag.b02_play_lead': true },
-        result: `극단 무대에 서 봤다는 소문이 이미 돌았다. 선생님은 오디션 없이 {name}에게 대본을 건넸다. 몇몇 아이의 눈초리가 따가웠다.`, next: 'b02_play_rehearsal' },
+        result: `극단 무대에 서 봤다는 소문이 이미 돌았다. 선생님은 배역 시험 없이 {name}에게 대본을 건넸다. 몇몇 아이의 눈초리가 따가웠다.`, next: 'b02_play_rehearsal' },
     ],
   },
   {

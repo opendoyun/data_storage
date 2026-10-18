@@ -3,7 +3,7 @@
 > **자동 생성 파일** — `node tools/gemini/chrome-batch.mjs` (원본 `assets/manifest.json` ← `tools/gemini/build-manifest.mjs`). 직접 고치지 마세요.
 > 공주 외형 기준: `docs/game-design/character-design.md` · 전체 절차와 QA: `docs/game-design/gemini-chrome-runbook.md`
 
-전체 115장 (캐릭터 시트 1 · 공주 초상 20 · NPC 초상 12 · 배경 32 · 엔딩 일러스트 48 · UI 2). API 키가 있으면 이 목록 대신 `node tools/gemini/generate.mjs` 한 줄로 같은 프롬프트가 자동 실행됩니다.
+전체 116장 (캐릭터 시트 1 · 공주 초상 20 · NPC 초상 12 · 배경 32 · 엔딩 일러스트 49 · UI 2). API 키가 있으면 이 목록 대신 `node tools/gemini/generate.mjs` 한 줄로 같은 프롬프트가 자동 실행됩니다.
 
 ## 사용법 (사람 · Claude in Chrome 공통)
 
@@ -146,8 +146,9 @@
 | 111 | `ending/cube_true_form` | `game/assets/ending/cube_true_form.png` | 1280×720 (16:9) | `ref/luna_sheet`, `npc/cube` |
 | 112 | `ending/guardian_successor` | `game/assets/ending/guardian_successor.png` | 1280×720 (16:9) | `ref/luna_sheet` |
 | 113 | `ending/legacy_sisters` | `game/assets/ending/legacy_sisters.png` | 1280×720 (16:9) | `ref/luna_sheet` |
-| 114 | `ui/title_key` | `game/assets/ui/title_key.png` | 1600×900 (16:9) | `ref/luna_sheet` |
-| 115 | `ui/album_cover` | `game/assets/ui/album_cover.png` | 1600×900 (16:9) | — |
+| 114 | `ending/ordinary_days` | `game/assets/ending/ordinary_days.png` | 1280×720 (16:9) | `ref/luna_sheet` |
+| 115 | `ui/title_key` | `game/assets/ui/title_key.png` | 1600×900 (16:9) | `ref/luna_sheet` |
+| 116 | `ui/album_cover` | `game/assets/ui/album_cover.png` | 1600×900 (16:9) | — |
 
 ---
 
@@ -3599,7 +3600,7 @@ text, letters, words, numbers, captions, speech bubbles, labels, signs with writ
 - Costume rule: black-and-white base outfit + exactly ONE accent colour + gold sparkles.
 - Modesty rule (every age, 10 to 28): wholesome and age-appropriate. High or modest neckline, sleeves that cover the shoulders, skirt or trousers well below the knee (ankle-length preferred), nothing tight, sheer or cut out. Relaxed natural pose, eye-level camera. 나이에 맞는 체형, 단정한 옷차림.
 [THIS IMAGE — ending/cube_true_form · 엔딩 일러스트 «큐브의 정체» (히든)]
-Epilogue (에필로그 원문 — 이 장면의 바탕): «열여덟 생일 밤, 큐브는 약속대로 나비넥타이 매듭 푸는 법을 루나에게만 알려 주었다. 매듭이 풀리자 하얀 몸통이 눈처럼 녹고 손바닥만 한 금빛 별 하나가 남았다. 하늘에 숨겨진 아기를 열 해 동안 품고 있다가 들판까지 데려다준 별똥별의 마지막 조각. 밤마다 백 번씩 깜박인 건 하늘에 보내는 "오늘도 무사함"이었고, 백 년 전 판화 속 아이 곁을 지킨 것도 이 별이었다. "이제 아가씨가 알려 주세요. 저는 뭐예요?" "우리 식구." 루나가 다시 매 준 나비넥타이는 판화 속 그것처럼 조금 삐뚤었다. 10년이 지난 지금도 큐브는 그 매듭 그대로 케이크를 들고 떠다닌다.»
+Epilogue (에필로그 원문 — 이 장면의 바탕): «열여덟 생일 밤, 큐브는 나비넥타이 매듭 푸는 법을 루나에게만 알려 주었다. 매듭이 풀리자 하얀 몸통이 눈처럼 녹고 손바닥만 한 금빛 별 하나가 남았다. 하늘에 숨겨진 아기를 열 해 동안 품고 있다가 들판까지 데려다준 별똥별의 마지막 조각. 밤마다 백 번씩 깜박인 건 하늘에 보내는 "오늘도 무사함"이었고, 백 년 전 판화 속 아이 곁을 지킨 것도 이 별이었다. "이제 아가씨가 알려 주세요. 저는 뭐예요?" "우리 식구." 루나가 다시 매 준 나비넥타이는 판화 속 그것처럼 조금 삐뚤었다. 10년이 지난 지금도 큐브는 그 매듭 그대로 케이크를 들고 떠다닌다.»
 Scene: The plains under three moons at night: adult Luna holds in her cupped hands a palm-sized glowing gold star wearing a tiny black bow tie (the true form of Cube, the butler fairy), both smiling; a small birthday cake on a blanket beside her, gold sparkles everywhere.
 Luna is shown as an ADULT WOMAN around 28 years old (ten years after she turned 18): same face and features as the character sheet but mature and calm, same waist-length silver-white straight hair, crimson eyes, gold star sparkles. Dressed modestly (covered shoulders and chest, long sleeves or a cape, long skirt or trousers).
 Costume accent for this ending: gold starlight, on a black-and-white base.
@@ -3688,11 +3689,47 @@ Composition: cinematic key illustration for the ending screen; Luna is the clear
 text, letters, words, numbers, captions, speech bubbles, labels, signs with writing, watermark, signature, logo, UI elements, frame, border, low quality, blurry, jpeg artifacts, extra fingers, malformed hands, extra limbs, distorted face, photorealistic, 3D render, revealing or skimpy clothing, low or plunging neckline, off-shoulder or bare shoulders, bare midriff, sleeveless top, short skirt, shorts, bare thighs, skirt slit, see-through or sheer fabric, cut-outs, swimwear, tight or body-hugging clothing, provocative or flirtatious pose, pose or camera angle that emphasizes the body, low camera angle looking up, blood, gore, wounds, weapons pointed at the viewer, fighting, Luna drawn off-model: Luna with blonde, black or brown hair, Luna with short, wavy or curly hair or twin tails, Luna with blue, purple or green eyes, Luna drawn as a child or young teenager (she is an adult here), the guardian's face, romantic contact between Luna and the guardian
 ```
 
+### #114 · `ending/ordinary_days` — 엔딩 «평범한 나날»
+
+- **저장**: `game/assets/ending/ordinary_days.png` · 1280×720 px · 목표 비율 16:9
+- **첨부** (먼저 업로드, 이 순서로): `game/assets/ref/luna_sheet.png`
+- **저장 명령**: `node tools/gemini/fit.mjs --from=<다운로드한 파일> --key=ending/ordinary_days`
+
+```text
+[STYLE ANCHOR — 별의 공주 / Starborn Princess]
+- Clean-line 2D anime illustration: crisp thin lineart, cel shading with soft gradient shadows, gentle luminous lighting, polished game-art finish. 깨끗한 선의 애니메이션 셀 채색, 부드러운 그라데이션 그림자.
+- World: medieval-fantasy kingdom "Celestia" (셀레스티아) under THREE moons (세 개의 달). Royal capital (palace, nobles), harbor city (trade, inns), rural plains (fields, herb witch, a small family house).
+- Palette: black-and-white costume base, ivory skin, silver-white hair, warm gold accents (#e7c36a), deep indigo night sky (#1d1631). Gold four-point star sparkles (금색 4각 별 반짝임) are the visual motif of the "star child".
+- Mood: warm, wholesome, gentle; for a 12+ rated family life-sim game. Everyone is dressed modestly and drawn in a non-sexualised way; natural poses, eye-level camera.
+- Absolutely no text of any kind in the image: no letters, captions, signs with writing, labels, logos, watermarks or signatures.
+[CHARACTER — 루나 Luna, the princess / 별의 아이]
+- Hair: silver-white (almost pure white) long STRAIGHT hair reaching the waist; straight-cut bangs lightly covering the eyebrows; long side locks framing the face; hair tips lightly fluttering. 은백색 긴 생머리, 일자 앞머리, 긴 옆머리.
+- Eyes: crimson red eyes, large irises with bright highlights; calm, slightly sleepy/drowsy gaze; faint blush on the cheeks. 붉은(크림슨) 눈, 차분하고 살짝 나른한 눈매.
+- Skin: fair ivory. Small silver star-shaped hairpin (별 모양 은 머리핀).
+- Signature: a few small GOLD four-point star sparkles floating around her (more when her magic is strong).
+- Costume rule: black-and-white base outfit + exactly ONE accent colour + gold sparkles.
+- Modesty rule (every age, 10 to 28): wholesome and age-appropriate. High or modest neckline, sleeves that cover the shoulders, skirt or trousers well below the knee (ankle-length preferred), nothing tight, sheer or cut out. Relaxed natural pose, eye-level camera. 나이에 맞는 체형, 단정한 옷차림.
+[THIS IMAGE — ending/ordinary_days · 엔딩 일러스트 «평범한 나날» (생활/상업)]
+Epilogue (에필로그 원문 — 이 장면의 바탕): «루나는 평원의 작은 집에서 멀지 않은 곳에 산다. 아침엔 빵집 일을 돕고, 오후엔 이웃 아이들 숙제를 봐 주고, 저녁이면 들러서 같이 밥을 먹는다. 대단한 이름은 없다. 다만 마을 사람 누구에게 물어도 "아, 그 은발 아가씨? 좋은 사람이지"라고 한다. 세 개의 달이 겹치는 밤이면 둘이 지붕에 올라가 그 이야기를 한다. 그거면 충분했냐고. 충분했다고.»
+Scene: A quiet evening ten years later: Luna (about 28, simple white blouse and long dark skirt, apron folded on her arm) and the guardian, seen from behind, sitting side by side on the crooked roof of the small plains house under three overlapping moons; warm window light below, a basket of bread beside her, a few faint gold star sparkles.
+Luna is shown as an ADULT WOMAN around 28 years old (ten years after she turned 18): same face and features as the character sheet but mature and calm, same waist-length silver-white straight hair, crimson eyes, gold star sparkles. Dressed modestly (covered shoulders and chest, long sleeves or a cape, long skirt or trousers).
+Costume accent for this ending: gold, on a black-and-white base.
+If the guardian ("당신", the player — Luna's adoptive parent) appears, show them ONLY from behind, as a distant silhouette, or as hands, never their face (the guardian's origin and gender vary by player). The guardian is a PARENT figure; nothing romantic between them.
+Composition: cinematic key illustration for the ending screen; Luna is the clear main subject (not tiny), emotional moment, detailed background.
+[FORMAT] landscape (가로) 16:9 — final file 1280×720 px.
+
+[REFERENCE IMAGES / 첨부 이미지]
+- Attached image 1 = ref/luna_sheet: Luna's character sheet (ages 10–18): keep the same face, hair and eye design, but draw her as the adult (~28) described above.
+
+[AVOID / 금지]
+text, letters, words, numbers, captions, speech bubbles, labels, signs with writing, watermark, signature, logo, UI elements, frame, border, low quality, blurry, jpeg artifacts, extra fingers, malformed hands, extra limbs, distorted face, photorealistic, 3D render, revealing or skimpy clothing, low or plunging neckline, off-shoulder or bare shoulders, bare midriff, sleeveless top, short skirt, shorts, bare thighs, skirt slit, see-through or sheer fabric, cut-outs, swimwear, tight or body-hugging clothing, provocative or flirtatious pose, pose or camera angle that emphasizes the body, low camera angle looking up, blood, gore, wounds, weapons pointed at the viewer, fighting, Luna drawn off-model: Luna with blonde, black or brown hair, Luna with short, wavy or curly hair or twin tails, Luna with blue, purple or green eyes, Luna drawn as a child or young teenager (she is an adult here), the guardian's face, romantic contact between Luna and the guardian
+```
+
 ---
 
 ## UI
 
-### #114 · `ui/title_key` — 타이틀 키 비주얼
+### #115 · `ui/title_key` — 타이틀 키 비주얼
 
 - **저장**: `game/assets/ui/title_key.png` · 1600×900 px · 목표 비율 16:9
 - **첨부** (먼저 업로드, 이 순서로): `game/assets/ref/luna_sheet.png`
@@ -3726,7 +3763,7 @@ Leave calm empty space in the upper third for the game logo, but do NOT draw any
 text, letters, words, numbers, captions, speech bubbles, labels, signs with writing, watermark, signature, logo, UI elements, frame, border, low quality, blurry, jpeg artifacts, extra fingers, malformed hands, extra limbs, distorted face, photorealistic, 3D render, revealing or skimpy clothing, low or plunging neckline, off-shoulder or bare shoulders, bare midriff, sleeveless top, short skirt, shorts, bare thighs, skirt slit, see-through or sheer fabric, cut-outs, swimwear, tight or body-hugging clothing, provocative or flirtatious pose, pose or camera angle that emphasizes the body, low camera angle looking up, adult body proportions, older-looking face, curvy or developed figure, emphasized chest or hips, heavy makeup, lipstick, high heels, Luna drawn off-model: Luna with blonde, black or brown hair, Luna with short, wavy or curly hair or twin tails, Luna with blue, purple or green eyes
 ```
 
-### #115 · `ui/album_cover` — 엔딩 앨범 표지
+### #116 · `ui/album_cover` — 엔딩 앨범 표지
 
 - **저장**: `game/assets/ui/album_cover.png` · 1600×900 px · 목표 비율 16:9
 - **첨부**: 없음

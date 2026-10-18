@@ -109,7 +109,7 @@ t('sim-core: playGame 결정성 + 일반 정책 10종 완주', () => {
   const c = SC.playGame('seek:' + ENDINGS[0].id, 5), d = SC.playGame('seek:' + ENDINGS[0].id, 5);
   assert.deepEqual([c.ending.id, c.stats, c.counters], [d.ending.id, d.stats, d.counters]);
   const noShop = SC.playGame('random', 3, { shop: false });
-  assert.equal(Object.values(noShop.items).reduce((a, b) => a + b, 0), 0);
+  assert.equal(noShop._sim.bought, 0); // 이벤트가 준 아이템은 구매가 아니다
 });
 t('sim-core: seek 정책이 실제로 목표를 노린다 (전 엔딩 1판씩, 성공 ≥ 60%)', () => {
   let ok = 0;
