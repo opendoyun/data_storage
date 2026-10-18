@@ -28,14 +28,14 @@ Control Chrome 확장은 **내 컴퓨터의 Chrome을 조작**하는 확장이�
 
 먼저 읽을 것:
 - docs/game-design/character-design.md  (공주 외형 확정안. 은백색 긴 생머리, 붉은 눈, 흑백 의상, 금색 별 반짝임, 애니메이션 셀 채색. 모든 나이에서 나이에 맞는 단정한 체형·옷차림)
-- game/assets/manifest.json  (생성할 그림 목록: key, path, width, height, prompt, negative, refs)
+- game/assets/manifest.json  (생성할 그림 목록. entries[] 의 각 항목: key, path, width, height, aspect, group, prompt, negative, refs. prompt 에는 스타일 앵커와 캐릭터 설정이 이미 들어 있으니 prompt 전체를 그대로 보내고, 끝에 "피해야 할 것: " + negative 를 붙인다.)
 - game/assets/gemini-prompts.md  (같은 목록의 사람이 읽기 쉬운 판)
 - docs/game-design/gemini-chrome-runbook.md  (전체 절차와 품질 점검표)
 
 작업 순서:
 1. Control Chrome 의 open_url 로 https://gemini.google.com/app 을 새 채팅으로 연다.
 2. 매니페스트의 스타일 앵커 문단을 첫 메시지로 보낸다.
-3. ref/luna_sheet(캐릭터 시트)를 가장 먼저 생성한다. 이후 모든 char/* 는 같은 채팅 안에서 "위 캐릭터 시트의 공주와 같은 인물로"를 붙여 생성한다 (웹 UI에서는 파일 첨부를 자동화하기 어려우므로 같은 대화 맥락으로 일관성을 유지한다).
+3. 생성 순서: ref/luna_sheet → char/* 20장 → npc/* → bg/* → ending/* → ui/*. ref/luna_sheet(캐릭터 시트)를 가장 먼저 생성한다. 이후 모든 char/* 는 같은 채팅 안에서 "위 캐릭터 시트의 공주와 같은 인물로"를 붙여 생성한다 (웹 UI에서는 파일 첨부를 자동화하기 어려우므로 같은 대화 맥락으로 일관성을 유지한다).
 4. 입력: execute_javascript 로 입력창(contenteditable 영역)에 프롬프트를 넣고 보내기 버튼을 누른다. 페이지 구조는 get_page_content 로 확인하면서 맞춘다.
 5. 생성 완료를 기다린 뒤, 마지막 응답의 이미지에 있는 다운로드 버튼(aria-label 에 "다운로드" 또는 "Download")을 execute_javascript 로 누른다.
 6. 셸에서 ~/Downloads 의 가장 최근 이미지 파일을 game/assets/<key>.png 로 옮긴다. 폴더가 없으면 만든다.
