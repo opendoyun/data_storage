@@ -60,6 +60,10 @@
 ### 기타 조건 경로
 `age` `month` `season`('spring'|'summer'|'autumn'|'winter') `stage`('child'|'girl'|'teen'|'youth') `guardian`('knight'…) `item.<id>` `legacyCount`(이전 회차 딸 수) `playthrough`(몇 회차) `seen.<eventId>`(본 횟수)
 
+### 아이템 id (`item.*` 조건·효과) — `game/js/data/items.js`
+`ball_gown` 무도회 드레스 · `travel_cloak` 여행용 망토 · `practice_sword` 연습용 검 · `star_atlas` 별자리 도감 · `telescope` 놋쇠 망원경(13세~) · `herb_kit` 약초 상자 · `lute` 류트 · `sewing_kit` 재봉 상자 · `dancing_shoes` 무용화 · `silver_hairpin` 별 모양 은 머리핀 · `holy_pendant` 성당의 펜던트 · `ledger_book` 가죽 장부 · `warm_coat` 털 외투 · `cat_toy` 깃털 장난감 · `tonic` 기운 나는 약 · `diary` 자물쇠 일기장
+- 조건 `item.ball_gown >= 1`(가지고 있음) / 효과 `'item.diary': +1`(선물로 줌) · `-1`(잃어버림).
+
 ### 이미지 키 (`image` 필드) — `game/js/data/images.js`에 있는 것만
 `bg/room_spring|summer|autumn|winter` `bg/festival_spring` `bg/school` `bg/festival_harvest` `bg/starnight` `bg/market` `bg/harbor` `bg/tower` `bg/church` `bg/forest` `bg/ruins` `bg/castle_hall` `bg/ballroom` `bg/tavern_inn` `bg/graveyard_night` `bg/wheat_field` `bg/theater_stage` `bg/library` `bg/smithy` `bg/etiquette_school` `bg/elda_hut` `bg/training_yard` `bg/river` `bg/night_market` `bg/road` `bg/snow_village` `bg/sickroom` `bg/guild_hall` `bg/throne_room`
 `npc` 필드: `cube` `loren` `garrett` `elda` `leon` `theodora` `envoy` `archbishop` `guildmaster` `shadow` `troupe` `knight_cpt` (image가 없으면 npc 초상, 둘 다 없으면 계절 거실)
