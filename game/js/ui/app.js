@@ -52,6 +52,7 @@ async function mountImage(container, path, fallbackHtml) {
 // 타이틀 화면
 // ──────────────────────────────────────────────────────────────────────
 function renderTitle() {
+  document.body.classList.remove('in-room'); delete document.body.dataset.season;
   const auto = localStorage.getItem(AUTOSAVE);
   let hair = 'white', eyes = 'crimson';
   const HAIRS = { white: '#f3f3f7', silver: '#dfe3ee', gold: '#f2d16b', black: '#2b2b35', brown: '#7a4b2a', rose: '#e8a1b4' };
@@ -122,10 +123,13 @@ function hashSeed(str) { if (/^\d+$/.test(str)) return Number(str) % 2147483647;
 function renderMain() {
   if (S.finished) return renderEnding();
   app.innerHTML = '';
+  // 디에게틱 UI (GDD 6): 계절 거실 배경 — 자산이 있으면 그림, 없으면 계절 색
+  document.body.dataset.season = S.season; document.body.classList.add('in-room');
+  assetExists('bg/room_' + S.season).then(ok => document.body.style.setProperty('--room-img', ok ? `url(${assetUrl('bg/room_' + S.season)})` : 'none'));
   const stage = stageOf(S.age);
   const g = E.GUARDIANS[S.guardian];
   app.appendChild(h(`<header class="top">
-    <h1>⭐ <span>별의 공주</span> <small style="color:var(--muted);font-weight:400;font-size:13px">v0.1 프로토타입</small></h1>
+    <h1>⭐ <span>별의 공주</span> <small style="color:var(--muted);font-weight:400;font-size:13px">v0.2</small></h1>
     <div class="topbar-right">
       <span class="chip">${S.age}세 · ${S.month}월 · ${SEASON_NAME[S.season]} · <b>${stage.name}</b></span>
       <span class="chip">💰 <b id="t-gold">${S.gold}</b>G <small>(월 연금 +${g.pension} / 식비 -30)</small></span>
@@ -135,7 +139,7 @@ function renderMain() {
     </div></header>`));
   const main = h(`<div class="main">
     <div class="col-left">
-      <div class="panel">
+      <div class="panel frame-portrait">
         <div class="portrait" id="portrait"></div>
         <div class="meter"><label><span>스트레스</span><span id="m-stress">${S.stress}</span></label><div class="bar stress"><i style="width:${S.stress}%"></i></div></div>
         <div class="meter"><label><span>신뢰 (아이 ↔ 보호자)</span><span>${S.trust}</span></label><div class="bar trust"><i style="width:${S.trust}%"></i></div></div>
@@ -143,11 +147,12 @@ function renderMain() {
         <div class="hint" style="margin-top:8px">평판 ${S.reputation} · 악평 ${S.infamy}${S.flags.has_cat ? ' · 🐈 달무리' : ''} · ${esc(GUARDIANS[S.guardian].name)}${S.playthrough > 1 ? ` · ${S.playthrough}회차` : ''}</div>
         ${itemsHtml()}
       </div>
-      <div class="panel" style="margin-top:12px"><h2>관계</h2><div class="rels">${NPCS.map(n => `<span>${n.name}</span><span>${bar(S.relations[n.id], '#b48cff')}</span>`).join('')}</div></div>
+      <div class="panel corkboard" style="margin-top:12px"><h2>관계</h2><div class="rels">${NPCS.map(n => `<span>${n.name}</span><span>${bar(S.relations[n.id], '#b48cff')}</span>`).join('')}</div></div>
     </div>
     <div class="col-mid">
-      <div class="panel">
-        <h2>${S.month}월 스케줄 — 열흘씩 세 번</h2>
+      <div class="panel wall-calendar">
+        <div class="cal-rings" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></div>
+        <div class="cal-head"><span class="cal-month">${S.month}<small>월</small></span><span class="cal-meta">${S.age}세 · ${SEASON_NAME[S.season]}<br>열흘씩 세 번</span></div>
         <div class="calendar" id="calendar"></div>
         <div class="actlist" id="actlist"></div>
         <div class="actions">
@@ -158,10 +163,10 @@ function renderMain() {
       </div>
     </div>
     <div class="col-right">
-      <div class="panel"><h2>능력치</h2><div class="stats" id="stats"></div>
+      <div class="panel bookshelf"><h2>능력치 — 책장 위 액자</h2><div class="stats" id="stats"></div>
         <div class="pers"><h2>성격 (직접 조작 불가)</h2>${PERSONALITY.map(p => `<div class="axis"><span>${p.neg}</span><div class="track"><div class="dot" style="left:${(S.personality[p.id] + 100) / 2}%"></div></div><span style="text-align:right">${p.pos}</span></div>`).join('')}</div>
       </div>
-      <div class="panel" style="margin-top:12px"><h2>기록</h2><div class="log" id="log"></div></div>
+      <div class="panel diary" style="margin-top:12px"><h2>육아 일기</h2><div class="log" id="log"></div></div>
     </div>
   </div>`);
   app.appendChild(main);
@@ -318,6 +323,7 @@ function stageNote(age) {
 // ──────────────────────────────────────────────────────────────────────
 function renderEnding() {
   const e = S.ending;
+  document.body.classList.remove('in-room');
   // 메타 진행 기록 (한 번만)
   if (META && meta && !S.metaResult) {
     try {
