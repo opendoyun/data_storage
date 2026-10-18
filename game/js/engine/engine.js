@@ -336,7 +336,7 @@ export function currentEvent(s) {
 }
 
 export function renderEvent(s, ev) {
-  const fill = (t) => typeof t === 'function' ? t(s) : fillName(t, s.name, GUARDIANS[s.guardian]?.call);
+  const fill = (t) => fillName(typeof t === 'function' ? t(s) : t, s.name, GUARDIANS[s.guardian]?.call);
   return {
     id: ev.id, title: fill(ev.title), text: fill(ev.text), image: ev.image || null, npc: ev.npc || null,
     choices: ev.choices.filter(c => evalAll(s, c.conditions)).map((c, i) => ({ index: ev.choices.indexOf(c), label: fill(c.label), minigame: c.minigame || null,
@@ -368,7 +368,7 @@ export function chooseEvent(s, eventId, choiceIndex, opts = {}) {
   applyEffects(s, effects);
   if (outcome.next) s.pendingEvents.unshift(outcome.next);
   saveRng(s, r);
-  const fill = (t) => typeof t === 'function' ? t(s) : fillName(t, s.name, GUARDIANS[s.guardian]?.call);
+  const fill = (t) => fillName(typeof t === 'function' ? t(s) : t, s.name, GUARDIANS[s.guardian]?.call);
   return { text: fill(outcome.result || ''), effects, success: choice.check ? outcome === choice.success : null, next: outcome.next || null };
 }
 
@@ -408,7 +408,7 @@ export function endMonth(s) {
 export function annualDecision(s) {
   const a = ANNUAL[s.age];
   if (!a) return null;
-  const fill = (t) => typeof t === 'function' ? t(s) : fillName(t, s.name, GUARDIANS[s.guardian]?.call);
+  const fill = (t) => fillName(typeof t === 'function' ? t(s) : t, s.name, GUARDIANS[s.guardian]?.call);
   return { age: s.age, title: fill(a.title), text: fill(a.text), image: a.image || null,
     options: a.options.map((o, i) => ({ index: i, label: fill(o.label), desc: fill(o.desc || ''), available: evalAll(s, o.conditions) })).filter(o => o.available) };
 }
@@ -419,7 +419,7 @@ export function applyAnnual(s, optionIndex) {
   if (!o || !evalAll(s, o.conditions)) throw new Error('선택할 수 없는 연간 결정');
   applyEffects(s, o.effects);
   s.annualLog.push({ age: s.age, id: o.id ?? String(optionIndex), label: typeof o.label === 'string' ? o.label : String(optionIndex) });
-  const fill = (t) => typeof t === 'function' ? t(s) : fillName(t, s.name, GUARDIANS[s.guardian]?.call);
+  const fill = (t) => fillName(typeof t === 'function' ? t(s) : t, s.name, GUARDIANS[s.guardian]?.call);
   return { text: fill(o.result || ''), effects: o.effects || {} };
 }
 
@@ -476,7 +476,7 @@ export function computeEnding(s) {
   const runner = scored.find(x => x.id !== chosen.id && !x.hidden && x.score > 0);
   const def = ENDINGS.find(e => e.id === chosen.id);
   return { id: chosen.id, name: chosen.name, cat: chosen.cat, hidden: chosen.hidden, runnerUp: runner ? { id: runner.id, name: runner.name } : null,
-    epilogue: typeof def.epilogue === 'function' ? def.epilogue(s) : fillName(def.epilogue, s.name, GUARDIANS[s.guardian]?.call),
+    epilogue: fillName(typeof def.epilogue === 'function' ? def.epilogue(s) : def.epilogue, s.name, GUARDIANS[s.guardian]?.call),
     persHistory: s.persHistory, annualLog: s.annualLog,
     lastWords: lastDialogue(s), top: scored.slice(0, 5).map(x => ({ id: x.id, name: x.name, score: Math.round(x.score) })) };
 }
@@ -485,24 +485,23 @@ export function computeEnding(s) {
 export function lastDialogue(s) {
   const L = [];
   const g = GUARDIANS[s.guardian]?.call ?? '아빠';
-  const name = s.name;
-  const first300 = s.milestones.find(m => m.th === 300);
+    const first300 = s.milestones.find(m => m.th === 300);
   const statName = (id) => STATS.find(x => x.id === id).name;
   const seasonOf = (m) => ({ spring: '봄', summer: '여름', autumn: '가을', winter: '겨울' })[SEASONS[m - 1]];
-  if (first300) L.push(`"${g}, 기억나? 내가 ${first300.age}살 ${seasonOf(first300.month)}에 처음으로 ${statName(first300.stat)}이(가) 눈에 띄게 늘었던 거. 그때 ${g}가 웃어줬잖아."`);
+  if (first300) L.push(`"${g}, 기억나? 내가 ${first300.age}살 ${seasonOf(first300.month)}에 처음으로 ${josa(statName(first300.stat), '이')} 눈에 띄게 늘었던 거. 그때 ${josa(g, '이')} 웃어 줬잖아."`);
   const counts = {};
   s.history.forEach(h => h.slots.forEach(id => counts[id] = (counts[id] || 0) + 1));
   const top = Object.entries(counts).sort((a, b) => b[1] - a[1])[0];
   if (top) L.push(`"8년 동안 제일 많이 한 건 ${ACTIVITY_MAP[top[0]].name}이었어. ${top[1]}번. 세어 봤어."`);
   const c = s.counters;
   if (c.forced >= 6) L.push(`"솔직히 말하면, 하고 싶지 않다고 했을 때 그냥 하라고 한 게 ${c.forced}번이야. 그땐 미웠어. 지금은… 조금 알 것 같아."`);
-  else if (c.refusals > 0 && c.forced <= 1) L.push(`"내가 싫다고 했을 때 ${g}는 거의 항상 들어줬어. 그게 얼마나 큰 일인지 이제 알아."`);
+  else if (c.refusals > 0 && c.forced <= 1) L.push(`"내가 싫다고 했을 때 ${josa(g, '은')} 거의 항상 들어줬어. 그게 얼마나 큰 일인지 이제 알아."`);
   if (c.autonomy >= 12) L.push(`"나한테 맡겨 준 날들이 ${c.autonomy}번. 그 날들에 내가 누군지 알게 됐어."`);
-  else if (c.autonomy === 0) L.push(`"한 번도 내 마음대로 해 본 적이 없었다는 거, ${g}는 알아?"`);
-  if (c.collapses >= 2) L.push(`"쓰러진 적이 ${c.collapses}번. 그때마다 ${g}가 밤새 옆에 있었던 거, 큐브가 말해줬어."`);
-  if (s.trust >= 80) L.push(`"그래도 난 ${g}를 믿어. 처음부터, 지금까지."`);
+  else if (c.autonomy === 0) L.push(`"한 번도 내 마음대로 해 본 적이 없었다는 거, ${josa(g, '은')} 알아?"`);
+  if (c.collapses >= 2) L.push(`"쓰러진 적이 ${c.collapses}번. 그때마다 ${josa(g, '이')} 밤새 옆에 있었던 거, 큐브가 말해줬어."`);
+  if (s.trust >= 80) L.push(`"그래도 난 ${josa(g, "을")} 믿어. 처음부터, 지금까지."`);
   else if (s.trust < 40) L.push(`"우리, 좀 더 이야기했어야 했어. 이제라도 하자."`);
-  L.push(`"고마워. 별에서 떨어진 날, 나를 주워 준 사람이 ${g}여서."`);
+  L.push(`"고마워. 별에서 떨어진 날, 나를 주워 준 사람이 ${josa(g, '이었')}어서."`);
   return L;
 }
 

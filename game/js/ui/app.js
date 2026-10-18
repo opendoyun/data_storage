@@ -3,6 +3,24 @@ import * as E from '../engine/engine.js';
 import { STATS, STAT_CATS, PERSONALITY, NPCS, SEASON_NAME, stageOf } from '../data/stats.js';
 import { ACTIVITIES, ACTIVITY_MAP } from '../data/activities.js';
 import { portraitSVG, portraitKey } from './portrait.js';
+import { GUARDIANS } from '../data/guardians.js';
+import { hasBatchim, josa } from '../engine/josa.js';
+
+// 선택 모듈: 없거나 깨져도 게임은 돌아간다 (미니게임·메타 진행·앨범)
+const soft = (p) => import(p).catch(e => { console.warn('[optional module]', p, e); return null; });
+const [MG, META, ALBUM] = await Promise.all([soft('./minigames.js'), soft('../engine/meta.js'), soft('./album.js')]);
+const SETTINGS_KEY = 'starborn_settings';
+const settings = (() => { try { return { minigames: true, ...JSON.parse(localStorage.getItem(SETTINGS_KEY) || '{}') }; } catch { return { minigames: true }; } })();
+const saveSettings = () => { try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings)); } catch {} };
+const store = { getItem: (k) => { try { return localStorage.getItem(k); } catch { return null; } }, setItem: (k, v) => { try { localStorage.setItem(k, v); } catch {} } };
+let meta = META ? META.loadMeta(store) : null;
+const callOf = (st) => GUARDIANS[st?.guardian]?.call ?? '아빠';
+// 예전 세이브 호환: v0.1 상태에 없는 필드 채우기
+function migrate(st) {
+  st.items ??= {}; st.annualLog ??= []; st.persHistory ??= []; st.legacy ??= []; st.playthrough ??= 1; st.guardianEvents ??= 0;
+  if (!st.persHistory.length) st.persHistory.push({ age: st.age, ...st.personality });
+  return st;
+}
 
 const $ = (sel, el = document) => el.querySelector(sel);
 const h = (html) => { const t = document.createElement('template'); t.innerHTML = html.trim(); return t.content.firstElementChild; };
@@ -43,17 +61,19 @@ function renderTitle() {
     <h1>별의 공주</h1><div class="sub">Starborn Princess · 8년, 한 아이를 키운다</div>
     <div class="form">
       <label>아이 이름</label><input id="f-name" value="루나" maxlength="8">
-      <label>보호자</label><select id="f-guardian"><option value="knight">전직 왕실 기사 (자금 800G · 신체 교육 +15%)</option><option value="scholar">떠돌이 학자 (자금 550G · 지성 교육 +15% · 설득 유리)</option></select>
+      <label>보호자</label><div id="f-guardian-box">${guardianSelectHtml()}</div>
       <label>머리색</label><div class="swatches" id="f-hair">${Object.entries(HAIRS).map(([k, c]) => `<div class="swatch ${k === hair ? 'on' : ''}" data-k="${k}" style="background:${c}" title="${k}"></div>`).join('')}</div>
       <label>눈색</label><div class="swatches" id="f-eyes">${Object.entries(EYESC).map(([k, c]) => `<div class="swatch ${k === eyes ? 'on' : ''}" data-k="${k}" style="background:${c}" title="${k}"></div>`).join('')}</div>
       <label>시드 (선택)</label><input id="f-seed" placeholder="비우면 무작위">
+      <div class="full" id="f-extras" style="justify-content:stretch;display:block"></div>
       <div class="full">
         ${auto ? '<button id="b-continue">이어하기 (자동저장)</button>' : ''}
         <button id="b-load">불러오기</button>
+        ${ALBUM && meta ? '<button id="b-album">엔딩 앨범</button>' : ''}
         <button class="primary" id="b-new">새로 시작</button>
       </div>
     </div>
-    <div class="hint">능력치 12종 · 성격 5축 · 엔딩 32종 · 아이는 가끔 당신의 계획을 거부합니다.</div>
+    <div class="hint">능력치 12종 · 성격 5축 · 이벤트 ${E.EVENTS.length}개 · 엔딩 ${E.ENDINGS.length}종${meta ? ` · ${(meta.runs || []).length ? `지금까지 ${(meta.runs || []).length}명의 아이` : '첫 번째 아이'}` : ''} · 아이는 가끔 당신의 계획을 거부합니다.</div>
   </div>`);
   app.appendChild(el);
   for (const grp of ['f-hair', 'f-eyes']) $('#' + grp, el).addEventListener('click', ev => {
@@ -61,18 +81,39 @@ function renderTitle() {
     $$('.swatch', $('#' + grp, el)).forEach(x => x.classList.remove('on')); sw.classList.add('on');
     if (grp === 'f-hair') hair = sw.dataset.k; else eyes = sw.dataset.k;
   });
+  // 메타 진행 UI(보호자 출신 해금·시작 보너스). 모듈이 없으면 기본 선택 상자.
+  let extras = null;
+  if (ALBUM && meta && ALBUM.renderNewGameExtras) {
+    try { extras = ALBUM.renderNewGameExtras($('#f-extras', el), meta); $('#f-guardian-box', el).closest('.form').querySelector('#f-guardian-box').previousElementSibling.style.display = 'none'; $('#f-guardian-box', el).style.display = 'none'; }
+    catch (e) { console.warn(e); extras = null; }
+  }
+  if ($('#b-album', el)) $('#b-album', el).onclick = () => openAlbum();
   $('#b-new', el).onclick = () => {
     const seedRaw = $('#f-seed', el).value.trim();
-    S = E.newGame({ name: $('#f-name', el).value.trim() || '루나', guardian: $('#f-guardian', el).value, hair, eyes, seed: seedRaw ? hashSeed(seedRaw) : undefined });
+    const sel = extras?.getSelection?.() ?? { guardian: $('#f-guardian', el)?.value || 'knight', bonusIds: [] };
+    let opts = { guardian: sel.guardian };
+    if (META && meta) { try { opts = META.newGameOptions(meta, sel); } catch (e) { console.warn(e); } }
+    S = migrate(E.newGame({ name: $('#f-name', el).value.trim() || '루나', hair, eyes, seed: seedRaw ? hashSeed(seedRaw) : undefined, ...opts }));
     slots = ['school', 'farm', 'rest'];
     renderMain();
-    showModal(`<h3>별이 떨어진 밤</h3><p>세 개의 달이 겹친 밤, 들판에 빛이 떨어졌다. 빛 속에는 열 살쯤 된 아이가 잠들어 있었다.\n\n당신은 아이를 안고 집으로 돌아왔다. 이름은 <b>${esc(S.name)}</b>이라고 짓기로 했다.\n\n이제부터 8년. 매달 열흘 단위로 세 가지 활동을 정해 주세요. 아이는 자라고, 때로는 거부하고, 때로는 스스로 선택할 것입니다.</p>
+    const g = GUARDIANS[S.guardian];
+    showModal(`<h3>별이 떨어진 밤</h3><p>세 개의 달이 겹친 밤, 들판에 빛이 떨어졌다. 빛 속에는 열 살쯤 된 아이가 잠들어 있었다. 은백색 머리카락 위로 작은 금빛이 반짝였다가 사라졌다.\n\n${esc(g.name)}였던 당신은 아이를 안고 집으로 돌아왔다. 이름은 <b>${esc(S.name)}</b>${hasBatchim(S.name) ? '이라고' : '라고'} 짓기로 했다.${S.playthrough > 1 ? `\n\n<span class="hint">${S.playthrough}번째 아이. 어딘가에서 지난 아이들의 이야기가 들려올지도 모른다.</span>` : ''}\n\n이제부터 8년. 매달 열흘 단위로 세 가지 활동을 정해 주세요. 아이는 자라고, 때로는 거부하고, 때로는 스스로 선택할 것입니다.</p>
       <div class="choices"><button class="primary" data-close>시작한다</button></div>`);
   };
-  if (auto) $('#b-continue', el).onclick = () => { S = E.deserialize(auto); renderMain(); toast('자동저장을 불러왔습니다.'); };
+  if (auto) $('#b-continue', el).onclick = () => { S = migrate(E.deserialize(auto)); renderMain(); toast('자동저장을 불러왔습니다.'); };
   $('#b-load', el).onclick = () => openSaveMenu('load');
 }
 const $$ = (sel, el = document) => [...el.querySelectorAll(sel)];
+function guardianSelectHtml() {
+  const opts = META && meta ? META.startOptions(meta).guardians : Object.entries(GUARDIANS).map(([id, g]) => ({ id, name: g.name, desc: g.desc, unlocked: !g.unlock, need: g.unlock?.shards }));
+  return `<select id="f-guardian">${opts.map(o => `<option value="${o.id}" ${o.unlocked ? '' : 'disabled'}>${esc(o.name)} (${esc(o.desc)})${o.unlocked ? '' : ` — 별 조각 ${o.need}개 필요`}</option>`).join('')}</select>`;
+}
+function openAlbum() {
+  if (!ALBUM || !meta) return;
+  const bg = h(`<div class="modal-bg album-bg"><div class="modal album-modal" style="max-width:1100px"></div></div>`);
+  document.body.appendChild(bg);
+  ALBUM.renderAlbum(bg.firstElementChild, meta, { onClose: () => { bg.remove(); if (META) META.saveMeta(store, meta); }, onChange: (m) => { meta = m; META?.saveMeta(store, meta); } });
+}
 function hashSeed(str) { if (/^\d+$/.test(str)) return Number(str) % 2147483647; let x = 2166136261; for (const ch of str) { x ^= ch.charCodeAt(0); x = Math.imul(x, 16777619) >>> 0; } return x % 2147483647; }
 
 // ──────────────────────────────────────────────────────────────────────
@@ -88,6 +129,8 @@ function renderMain() {
     <div class="topbar-right">
       <span class="chip">${S.age}세 · ${S.month}월 · ${SEASON_NAME[S.season]} · <b>${stage.name}</b></span>
       <span class="chip">💰 <b id="t-gold">${S.gold}</b>G <small>(월 연금 +${g.pension} / 식비 -30)</small></span>
+      <button class="ghost" id="b-shop">🛍 상점</button>
+      <button class="ghost" id="b-mg" title="이벤트 판정을 미니게임으로 할지">${settings.minigames && MG ? '🎮 미니게임 켬' : '🎲 자동 판정'}</button>
       <button class="ghost" id="b-save">저장</button><button class="ghost" id="b-loadm">불러오기</button><button class="ghost" id="b-title">타이틀</button>
     </div></header>`));
   const main = h(`<div class="main">
@@ -97,7 +140,8 @@ function renderMain() {
         <div class="meter"><label><span>스트레스</span><span id="m-stress">${S.stress}</span></label><div class="bar stress"><i style="width:${S.stress}%"></i></div></div>
         <div class="meter"><label><span>신뢰 (아이 ↔ 보호자)</span><span>${S.trust}</span></label><div class="bar trust"><i style="width:${S.trust}%"></i></div></div>
         <div class="meter"><label><span>보호자 건강</span><span>${S.guardianHealth}</span></label><div class="bar ghealth"><i style="width:${S.guardianHealth}%"></i></div></div>
-        <div class="hint" style="margin-top:8px">평판 ${S.reputation} · 악평 ${S.infamy}${S.flags.has_cat ? ' · 🐈 달무리' : ''}</div>
+        <div class="hint" style="margin-top:8px">평판 ${S.reputation} · 악평 ${S.infamy}${S.flags.has_cat ? ' · 🐈 달무리' : ''} · ${esc(GUARDIANS[S.guardian].name)}${S.playthrough > 1 ? ` · ${S.playthrough}회차` : ''}</div>
+        ${itemsHtml()}
       </div>
       <div class="panel" style="margin-top:12px"><h2>관계</h2><div class="rels">${NPCS.map(n => `<span>${n.name}</span><span>${bar(S.relations[n.id], '#b48cff')}</span>`).join('')}</div></div>
     </div>
@@ -123,6 +167,8 @@ function renderMain() {
   app.appendChild(main);
   renderPortrait(); renderStats(); renderCalendar(); renderActList(); renderLog();
   $('#b-run').onclick = onRunMonth;
+  $('#b-shop').onclick = openShop;
+  $('#b-mg').onclick = () => { if (!MG) return toast('미니게임 모듈이 없습니다.'); settings.minigames = !settings.minigames; saveSettings(); renderMain(); };
   $('#b-same').onclick = () => { const last = S.history[S.history.length - 1]; if (last) { slots = [...last.slots]; renderCalendar(); } };
   $('#b-save').onclick = () => openSaveMenu('save');
   $('#b-loadm').onclick = () => openSaveMenu('load');
@@ -192,14 +238,25 @@ async function onRunMonth() {
     const ev = E.currentEvent(S);
     if (!ev.choices.length) { S.pendingEvents.shift(); continue; }
     const idx = await showEvent(ev);
-    const out = E.chooseEvent(S, ev.id, idx);
+    const ch = ev.choices.find(c => c.index === idx);
+    const opts = {};
+    if (ch?.minigame && ch.check && MG && settings.minigames) {
+      try {
+        const sc = await MG.playMinigame(ch.minigame, { childName: S.name, title: ev.title, stat: ch.check.stat, statName: STATS.find(x => x.id === ch.check.stat)?.name, value: ch.check.value, dc: ch.check.dc, reducedMotion: matchMedia('(prefers-reduced-motion: reduce)').matches });
+        if (typeof sc === 'number') opts.mgScore = sc;
+      } catch (e) { console.warn('minigame failed, auto-resolve', e); }
+    }
+    const out = E.chooseEvent(S, ev.id, idx, opts);
     log(`${ev.title}: ${out.text}`);
     await showModal(`<h3>${esc(ev.title)}</h3>${out.success === true ? '<span class="tag" style="color:var(--ok)">판정 성공</span>' : out.success === false ? '<span class="tag" style="color:var(--danger)">판정 실패</span>' : ''}<div class="result">${esc(out.text)}</div><div class="fxline">${fxSummary(out.effects)}</div><div class="choices"><button class="primary" data-close>계속</button></div>`);
   }
   // 월말 결산
   await showSummary(report);
   const end = E.endMonth(S);
-  if (end.birthday) { await showBirthday(end.report); }
+  if (end.birthday) {
+    await showBirthday(end.report);
+    if (end.annual && end.annual.options?.length) await showAnnual(end.annual);
+  }
   localStorage.setItem(AUTOSAVE, E.serialize(S));
   lastReport = report;
   renderMain();
@@ -261,6 +318,15 @@ function stageNote(age) {
 // ──────────────────────────────────────────────────────────────────────
 function renderEnding() {
   const e = S.ending;
+  // 메타 진행 기록 (한 번만)
+  if (META && meta && !S.metaResult) {
+    try {
+      const r = META.recordRun(meta, S, new Date().toISOString());
+      meta = r.meta; META.saveMeta(store, meta);
+      S.metaResult = { shardsGained: r.shardsGained, newEndings: r.newEndings, newUnlocks: r.newUnlocks, letterUnlocks: r.letterUnlocks };
+    } catch (err) { console.warn('recordRun failed', err); S.metaResult = { error: true }; }
+  }
+  const mr = S.metaResult;
   app.innerHTML = '';
   app.appendChild(h(`<div class="ending">
     <div class="title" style="min-height:auto;padding:30px 0 10px"><div class="sub">8년의 끝 · ${esc(S.name)}, 18세</div><h1>${esc(e.name)}</h1><div class="sub">${esc(e.cat)}${e.hidden ? ' · ✨ 히든 엔딩' : ''}${e.runnerUp ? ` · 다른 길이었다면: ${esc(e.runnerUp.name)}` : ''}</div></div>
@@ -268,15 +334,47 @@ function renderEnding() {
       <div class="portrait" id="portrait"></div>
       <div><h2>10년 후</h2><div class="epi">${esc(e.epilogue)}</div></div>
     </div>
+    <div class="evimg ending-art" id="ending-art" style="margin-top:12px;aspect-ratio:16/9"></div>
+    ${mr && !mr.error ? `<div class="panel" style="margin-top:12px"><h2>별 조각</h2><div>✨ 별 조각 +${mr.shardsGained ?? 0}${(mr.newEndings || []).length ? ' · 새 엔딩 기록' : ''}${(mr.newUnlocks || []).length ? ` · 해금: ${(mr.newUnlocks || []).map(u => esc(u.name ?? u)).join(', ')}` : ''}${(mr.letterUnlocks || []).length ? ` · 새 편지 ${(mr.letterUnlocks || []).length}통 도착` : ''}</div></div>` : ''}
+    ${ALBUM?.renderPersonalityMap && e.persHistory?.length ? `<div class="panel" style="margin-top:12px"><h2>성격 지도 — 10세부터 18세까지</h2><div class="pmap">${ALBUM.renderPersonalityMap(e.persHistory)}</div></div>` : ''}
     <div class="panel" style="margin-top:12px"><h2>마지막 대화 — 8년의 기록으로</h2><div class="words">${e.lastWords.map(w => `<div>${esc(w)}</div>`).join('')}</div></div>
     <div class="panel" style="margin-top:12px"><h2>엔딩 점수 상위 5</h2><div class="summary">${e.top.map(t => `<span class="k">${esc(t.name)}</span><span>${t.score}</span>`).join('')}</div>
       <div class="hint" style="margin-top:8px">최종 능력치: ${STATS.map(s => `${s.name} ${S.stats[s.id]}`).join(' · ')}<br>거부 ${S.counters.refusals} · 강행 ${S.counters.forced} · 자율 ${S.counters.autonomy} · 탈진 ${S.counters.collapses} · 이벤트 ${S.counters.events}</div></div>
-    <div class="actions" style="justify-content:center;margin:20px 0"><button class="primary" id="b-again">새로운 아이와 다시</button><button id="b-export">플레이 기록 내보내기(JSON)</button></div>
+    <div class="actions" style="justify-content:center;margin:20px 0"><button class="primary" id="b-again">새로운 아이와 다시</button>${ALBUM && meta ? '<button id="b-album2">엔딩 앨범 · 편지함</button>' : ''}<button id="b-export">플레이 기록 내보내기(JSON)</button></div>
   </div>`));
   renderPortrait();
+  (async () => { const box = $('#ending-art'); if (!box) return; if (await assetExists('ending/' + e.id)) box.style.background = `url(${assetUrl('ending/' + e.id)}) center/cover`; else box.innerHTML = `<div style="padding:14px;color:var(--muted);font-size:12px">🖼 ending/${esc(e.id)}.png — 제미나이 생성 대기 (docs/game-design/gemini-chrome-runbook.md)</div>`; })();
+  if ($('#b-album2')) $('#b-album2').onclick = () => openAlbum();
   $('#b-again').onclick = () => renderTitle();
   $('#b-export').onclick = () => { const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([E.serialize(S)], { type: 'application/json' })); a.download = `starborn_${S.name}_${e.id}.json`; a.click(); };
   localStorage.removeItem(AUTOSAVE);
+}
+
+// ──────────────────────────────────────────────────────────────────────
+// 연간 보호자 결정 · 상점 · 소지품
+// ──────────────────────────────────────────────────────────────────────
+async function showAnnual(a) {
+  const v = await showModal(`<h3>🗓 ${esc(a.title)}</h3><div class="evimg" id="anImg"></div><p>${esc(a.text)}</p><div class="hint">1년에 한 번, 이 해의 방향을 정합니다.</div>
+    <div class="choices">${a.options.map(o => `<button data-v="${o.index}"><b>${esc(o.label)}</b>${o.desc ? `<small>${esc(o.desc)}</small>` : ''}</button>`).join('')}</div>`);
+  const r = E.applyAnnual(S, Number(v));
+  log(`[연간 결정] ${a.title}: ${a.options.find(o => o.index === Number(v))?.label ?? ''}`);
+  await showModal(`<h3>${esc(a.title)}</h3><div class="result">${esc(r.text || '결정을 내렸다.')}</div><div class="fxline">${fxSummary(r.effects)}</div><div class="choices"><button class="primary" data-close>새해를 시작한다</button></div>`);
+}
+function itemsHtml() {
+  const owned = Object.entries(S.items || {}).filter(([, n]) => n > 0);
+  if (!owned.length) return '';
+  return `<div class="hint" style="margin-top:6px">소지품: ${owned.map(([id, n]) => { const it = E.ITEMS.find(i => i.id === id); return esc(it?.name ?? id) + (n > 1 ? ` ×${n}` : ''); }).join(', ')}</div>`;
+}
+async function openShop() {
+  const list = E.shopList(S);
+  const kinds = { outfit: '의상', accessory: '장신구', book: '책', tool: '도구', gift: '선물', consumable: '소모품' };
+  const v = await showModal(`<h3>🛍 읍내 상점</h3><div class="hint">소지금 ${S.gold}G · 산 물건은 바로 효과가 나고, 일부는 매달 조금씩 도움이 됩니다.</div>
+    <div class="choices" style="grid-template-columns:repeat(auto-fill,minmax(220px,1fr))">${list.map(it => `<button data-v="${it.id}" ${it.soldOut || !it.affordable ? 'disabled' : ''}><b>${esc(it.name)}</b> <span class="tag">${kinds[it.kind] ?? it.kind}</span><small>${esc(it.desc ?? '')}</small><small>${it.price}G${it.owned ? ` · 보유 ${it.owned}` : ''}${it.soldOut ? ' · 보유 중' : ''}${it.onBuy ? ' · ' + fxSummary(it.onBuy) : ''}${it.monthly ? ' · 매달 ' + fxSummary(it.monthly) : ''}</small></button>`).join('') || '<p>지금 살 수 있는 물건이 없다.</p>'}</div>
+    <div class="choices"><button data-close>나가기</button></div>`);
+  if (v == null) return;
+  try { const r = E.buyItem(S, v); log(`${r.item.name}을(를) 샀다. (-${r.item.price}G)`); toast(`${r.item.name} 구입`); localStorage.setItem(AUTOSAVE, E.serialize(S)); }
+  catch (err) { toast(err.message); }
+  renderMain();
 }
 
 // ──────────────────────────────────────────────────────────────────────
@@ -292,7 +390,7 @@ function openSaveMenu(mode) {
   showModal(`<h3>${mode === 'save' ? '저장' : '불러오기'}</h3><div class="choices">${rows}</div><div class="choices"><button data-close>닫기</button></div>`, (v) => {
     const n = Number(v);
     if (mode === 'save') { S.savedAt = Date.now(); localStorage.setItem(SLOT(n), E.serialize(S)); toast(`슬롯 ${n}에 저장했습니다.`); }
-    else { const raw = localStorage.getItem(SLOT(n)); if (raw) { S = E.deserialize(raw); slots = ['school', 'farm', 'rest']; renderMain(); toast(`슬롯 ${n}을 불러왔습니다.`); } }
+    else { const raw = localStorage.getItem(SLOT(n)); if (raw) { S = migrate(E.deserialize(raw)); slots = ['school', 'farm', 'rest']; renderMain(); toast(`슬롯 ${n}을 불러왔습니다.`); } }
   });
 }
 

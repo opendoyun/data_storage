@@ -275,7 +275,7 @@ function wish(s) {
   if (p.roman > 30) return '세상 끝의 바다를 보고 싶어. 노래로 남길 수 있게.';
   if (p.good < -20) return '……말하면 들어줄 거야? 아니, 비밀.';
   if (p.extro < -30) return '그냥, 지금처럼. 이 집에서. 오래.';
-  return '아빠가 아프지 않는 거. 그거면 돼.';
+  return '{call이} 아프지 않는 거. 그거면 돼.';
 }
 
 export default EVENTS;
