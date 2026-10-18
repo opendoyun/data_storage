@@ -1,8 +1,8 @@
 // 레이어드 SVG 초상 (GDD 4.4). assets/char/{stage}_{outfit}.png 가 있으면 그 이미지를 우선 사용.
 import { STATS } from '../data/stats.js';
 
-const HAIR = { silver: '#dfe3ee', gold: '#f2d16b', black: '#2b2b35', brown: '#7a4b2a', rose: '#e8a1b4' };
-const EYES = { violet: '#8e6bd6', blue: '#4f8fd6', green: '#5cb27a', amber: '#d6953f', gray: '#8a8f9e' };
+const HAIR = { white: '#f3f3f7', silver: '#dfe3ee', gold: '#f2d16b', black: '#2b2b35', brown: '#7a4b2a', rose: '#e8a1b4' };
+const EYES = { crimson: '#c4303a', violet: '#8e6bd6', blue: '#4f8fd6', green: '#5cb27a', amber: '#d6953f', gray: '#8a8f9e' };
 
 export function dominantCat(s) {
   const sum = { body: 0, mind: 0, social: 0, inner: 0 };
@@ -12,13 +12,20 @@ export function dominantCat(s) {
 
 export function portraitKey(s) { return `${s.stage}_${dominantCat(s)}`; }
 
+// 별의 아이 상징: 금색 4각 별 반짝임 (마력이 높을수록 많아짐)
+function sparkles(s) {
+  const n = 2 + Math.min(6, Math.floor((s.stats?.mag ?? 0) / 90));
+  const pts = [[40, 70], [150, 60], [160, 150], [30, 170], [140, 30], [52, 30], [170, 100], [20, 120]];
+  return pts.slice(0, n).map(([x, y], i) => { const r = 4 + (i % 3) * 2; return `<path d="M${x} ${y - r} Q${x} ${y} ${x + r} ${y} Q${x} ${y} ${x} ${y + r} Q${x} ${y} ${x - r} ${y} Q${x} ${y} ${x} ${y - r}z" fill="#f4d27a" opacity=".9"><animate attributeName="opacity" values=".35;1;.35" dur="${2 + i * 0.4}s" repeatCount="indefinite"/></path>`; }).join('');
+}
+
 export function portraitSVG(s) {
   const stage = s.stage;
   const scale = { child: 0.78, girl: 0.86, teen: 0.94, youth: 1.0, adult: 1.0 }[stage] ?? 1;
-  const hair = HAIR[s.hair] ?? HAIR.silver, eyes = EYES[s.eyes] ?? EYES.violet;
+  const hair = HAIR[s.hair] ?? HAIR.white, eyes = EYES[s.eyes] ?? EYES.crimson;
   const cat = dominantCat(s);
-  const outfit = { body: '#8c3b3b', mind: '#35507a', social: '#c99a3a', inner: '#5d7a44' }[cat];
-  const outfit2 = { body: '#5a2525', mind: '#223556', social: '#8f6a1e', inner: '#3d5230' }[cat];
+  const outfit = { body: '#1f1d24', mind: '#1f1d2a', social: '#f1eef0', inner: '#f3f1ea' }[cat];
+  const outfit2 = { body: '#a3242f', mind: '#4b3c8f', social: '#1b1a1f', inner: '#2f6b45' }[cat];
   const shoulders = 26 + Math.min(10, s.stats.str / 80);           // 근력 → 어깨
   const posture = Math.min(6, s.stats.cult / 100);                 // 교양 → 자세(곧게)
   const tired = s.stress >= 70, happy = s.trust >= 70 && s.stress < 50, sad = s.trust < 35;
@@ -53,6 +60,7 @@ export function portraitSVG(s) {
     ${happy ? '<ellipse cx="76" cy="110" rx="5" ry="3" fill="#f3a7a7" opacity=".6"/><ellipse cx="116" cy="110" rx="5" ry="3" fill="#f3a7a7" opacity=".6"/>' : ''}
     ${accessory}
     ${glow}
+    ${sparkles(s)}
   </g>
 </svg>`;
 }

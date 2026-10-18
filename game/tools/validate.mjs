@@ -12,6 +12,7 @@ import { ITEMS } from '../js/data/items.js';
 import { LETTERS, CATEGORY_LETTERS } from '../js/data/letters.js';
 import { GUARDIANS } from '../js/data/guardians.js';
 import { EVENT_IMAGE_KEYS } from '../js/data/images.js';
+import { PUBLIC_FLAGS } from '../js/data/flags.js';
 import { newGame } from '../js/engine/engine.js';
 import { evalCondition } from '../js/engine/conditions.js';
 
@@ -208,10 +209,24 @@ if (!onlyFile) {
 }
 
 // ── 플래그 교차 참조 ───────────────────────────────────────────────
+const batchOf = (file) => (/^(b\d+[a-z]?)_/.exec(file || '') || [])[1] || (file === 'core.js' ? 'core' : null);
+const myBatch = onlyFile ? batchOf(onlyFile) : null;
 for (const [flag, wheres] of flagsRead) {
   if (flag.startsWith('count:')) { const c = flag.slice(6); if (!countersSet.has(c)) err(wheres[0], `count.${c}를 읽지만 어디서도 증가시키지 않음`); continue; }
-  if (!flagsSet.has(flag) && !ENGINE_FLAGS.has(flag)) err(wheres[0], `flag.${flag}를 읽지만 어디서도 세팅하지 않음 (${wheres.length}곳)`);
+  const declared = onlyFile && PUBLIC_FLAGS[flag];
+  if (!flagsSet.has(flag) && !ENGINE_FLAGS.has(flag) && !declared) err(wheres[0], `flag.${flag}를 읽지만 어디서도 세팅하지 않음 (${wheres.length}곳)`);
 }
+// 접두사 규율: 배치 파일은 공용 플래그(등록부) 또는 자기 접두사 플래그만 쓴다
+for (const [map, verb] of [[flagsSet, '세팅'], [flagsRead, '읽기']]) for (const [flag, wheres] of map) {
+  if (flag.startsWith('count:')) continue;
+  for (const w of wheres) {
+    const f = /^\[([^\]]+)\]/.exec(w)?.[1]; const b = batchOf(f);
+    if (!b || b === 'core' || (onlyFile && f !== onlyFile)) continue;
+    if (PUBLIC_FLAGS[flag]) { if (verb === '세팅' && !PUBLIC_FLAGS[flag].includes(b)) warn(w, `공용 플래그 ${flag}의 세팅 책임 배치가 아님(${PUBLIC_FLAGS[flag].join(',')}) — 의도라면 OK`); continue; }
+    if (!flag.startsWith(b + '_') && !flag.startsWith('annual_')) err(w, `flag.${flag}: 공용 등록부에 없는 플래그는 '${b}_' 접두사 필요`);
+  }
+}
+if (!onlyFile) for (const [flag, setters] of Object.entries(PUBLIC_FLAGS)) if (!setters.includes('engine') && !flagsSet.has(flag)) warn('[flags]', `공용 플래그 ${flag}를 세팅하는 곳이 아직 없음 (담당 ${setters.join(',')})`);
 if (!onlyFile) for (const [flag, wheres] of flagsSet) if (!flagsRead.has(flag)) warn(wheres[0], `flag.${flag}를 세팅하지만 아무도 읽지 않음`);
 
 // ── 출력 ──────────────────────────────────────────────────────────

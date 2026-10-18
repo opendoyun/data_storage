@@ -27,7 +27,7 @@ const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
 // ──────────────────────────────────────────────────────────────────────
 // bonuses: 메타 진행 시작 보너스 { gold, stats:{}, relations:{}, flags:{}, items:{} }
 // legacy: 이전 회차 딸들 [{ name, endingId, endingName, cat }] (GDD 4.9 유산 시스템)
-export function newGame({ name = '루나', guardian = 'knight', seed = Date.now() % 2147483647, hair = 'silver', eyes = 'violet', bonuses = null, legacy = [], playthrough = 1 } = {}) {
+export function newGame({ name = '루나', guardian = 'knight', seed = Date.now() % 2147483647, hair = 'white', eyes = 'crimson', bonuses = null, legacy = [], playthrough = 1 } = {}) {
   const rng = makeRng(seed);
   const g = GUARDIANS[guardian];
   if (!g) throw new Error('알 수 없는 보호자: ' + guardian);

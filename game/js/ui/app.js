@@ -35,9 +35,9 @@ async function mountImage(container, path, fallbackHtml) {
 // ──────────────────────────────────────────────────────────────────────
 function renderTitle() {
   const auto = localStorage.getItem(AUTOSAVE);
-  let hair = 'silver', eyes = 'violet';
-  const HAIRS = { silver: '#dfe3ee', gold: '#f2d16b', black: '#2b2b35', brown: '#7a4b2a', rose: '#e8a1b4' };
-  const EYESC = { violet: '#8e6bd6', blue: '#4f8fd6', green: '#5cb27a', amber: '#d6953f', gray: '#8a8f9e' };
+  let hair = 'white', eyes = 'crimson';
+  const HAIRS = { white: '#f3f3f7', silver: '#dfe3ee', gold: '#f2d16b', black: '#2b2b35', brown: '#7a4b2a', rose: '#e8a1b4' };
+  const EYESC = { crimson: '#c4303a', violet: '#8e6bd6', blue: '#4f8fd6', green: '#5cb27a', amber: '#d6953f', gray: '#8a8f9e' };
   app.innerHTML = '';
   const el = h(`<div class="title">
     <h1>별의 공주</h1><div class="sub">Starborn Princess · 8년, 한 아이를 키운다</div>
