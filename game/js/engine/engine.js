@@ -492,12 +492,12 @@ export function lastDialogue(s) {
   const counts = {};
   s.history.forEach(h => h.slots.forEach(id => counts[id] = (counts[id] || 0) + 1));
   const top = Object.entries(counts).sort((a, b) => b[1] - a[1])[0];
-  if (top) L.push(`"8년 동안 제일 많이 한 건 ${ACTIVITY_MAP[top[0]].name}이었어. ${top[1]}번. 세어 봤어."`);
+  if (top) L.push(`"8년 동안 제일 많이 한 건 ${josa(ACTIVITY_MAP[top[0]].name, '이었')}어. ${top[1]}번. 세어 봤어."`);
   const c = s.counters;
   if (c.forced >= 6) L.push(`"솔직히 말하면, 하고 싶지 않다고 했을 때 그냥 하라고 한 게 ${c.forced}번이야. 그땐 미웠어. 지금은… 조금 알 것 같아."`);
   else if (c.refusals > 0 && c.forced <= 1) L.push(`"내가 싫다고 했을 때 ${josa(g, '은')} 거의 항상 들어줬어. 그게 얼마나 큰 일인지 이제 알아."`);
   if (c.autonomy >= 12) L.push(`"나한테 맡겨 준 날들이 ${c.autonomy}번. 그 날들에 내가 누군지 알게 됐어."`);
-  else if (c.autonomy === 0) L.push(`"한 번도 내 마음대로 해 본 적이 없었다는 거, ${josa(g, '은')} 알아?"`);
+  else if (c.autonomy === 0) L.push(`"열흘을 통째로 나한테 맡겨 준 적은 한 번도 없었던 거, ${josa(g, '은')} 알아? 그래서 지금 이 길은 내가 처음으로 혼자 고른 거야."`);
   if (c.collapses >= 2) L.push(`"쓰러진 적이 ${c.collapses}번. 그때마다 ${josa(g, '이')} 밤새 옆에 있었던 거, 큐브가 말해줬어."`);
   if (s.trust >= 80) L.push(`"그래도 난 ${josa(g, "을")} 믿어. 처음부터, 지금까지."`);
   else if (s.trust < 40) L.push(`"우리, 좀 더 이야기했어야 했어. 이제라도 하자."`);

@@ -125,3 +125,6 @@ body[data-season=winter]{--room-tint:radial-gradient(1100px 600px at 50% -10%,#2
   .actlist{max-height:300px}
   .slot{min-height:auto}
 }
+
+.evimg.evimg-empty{aspect-ratio:auto;height:40px;display:flex;align-items:center;padding:0 14px;font-size:12px;color:var(--muted);background:linear-gradient(90deg,#2a1f4d,#1a1430)}
+.ending-art .hint{text-align:center}

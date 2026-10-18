@@ -4,6 +4,7 @@ import { STATS, STAT_CATS, PERSONALITY, NPCS, SEASON_NAME, stageOf } from '../da
 import { ACTIVITIES, ACTIVITY_MAP } from '../data/activities.js';
 import { portraitSVG, portraitKey } from './portrait.js';
 import { GUARDIANS } from '../data/guardians.js';
+import { BG as IMG_BG, NPC as IMG_NPC } from '../data/images.js';
 import { hasBatchim, josa } from '../engine/josa.js';
 
 // 선택 모듈: 없거나 깨져도 게임은 돌아간다 (미니게임·메타 진행·앨범)
@@ -110,9 +111,13 @@ function guardianSelectHtml() {
   return `<select id="f-guardian">${opts.map(o => `<option value="${o.id}" ${o.unlocked ? '' : 'disabled'}>${esc(o.name)} (${esc(o.desc)})${o.unlocked ? '' : ` — 별 조각 ${o.need}개 필요`}</option>`).join('')}</select>`;
 }
 function pmapHtml(e) {
-  if (!ALBUM?.renderPersonalityMap || !e.persHistory?.length) return '';
-  try { return `<div class="panel" style="margin-top:12px"><h2>성격 지도 — 10세부터 18세까지</h2><div class="pmap">${ALBUM.renderPersonalityMap(e.persHistory)}</div></div>`; }
-  catch (err) { console.warn('personality map failed', err); return ''; }
+  if (!ALBUM?.mountPersonalityMap || !e.persHistory?.length) return '';
+  return `<div class="panel" style="margin-top:12px"><h2>성격 지도 — 10세부터 18세까지</h2><div class="pmap" id="pmap"></div></div>`;
+}
+function mountPmap(e) {
+  const box = $('#pmap'); if (!box) return;
+  try { ALBUM.mountPersonalityMap(box, e.persHistory, { choices: S.annualLog, favor: ALBUM.endingFavor?.(e.id) }); }
+  catch (err) { console.warn('personality map failed', err); box.closest('.panel')?.remove(); }
 }
 function openAlbum() {
   if (!ALBUM || !meta) return;
@@ -253,7 +258,7 @@ async function onRunMonth() {
     const opts = {};
     if (ch?.minigame && ch.check && MG && settings.minigames) {
       try {
-        const sc = await MG.playMinigame(ch.minigame, { childName: S.name, title: ev.title, stat: ch.check.stat, statName: STATS.find(x => x.id === ch.check.stat)?.name, value: ch.check.value, dc: ch.check.dc, reducedMotion: matchMedia('(prefers-reduced-motion: reduce)').matches });
+        const sc = await MG.playMinigame(ch.minigame, { childName: S.name, hair: S.hair, eyes: S.eyes, title: ev.title, stat: ch.check.stat, statName: STATS.find(x => x.id === ch.check.stat)?.name, value: ch.check.value, dc: ch.check.dc, reducedMotion: matchMedia('(prefers-reduced-motion: reduce)').matches });
         if (typeof sc === 'number') opts.mgScore = sc;
       } catch (e) { console.warn('minigame failed, auto-resolve', e); }
     }
@@ -288,7 +293,8 @@ function showEvent(ev) {
       <div class="choices">${ev.choices.map(c => `<button data-v="${c.index}"><b>${esc(c.label)}</b>${c.hint ? `<small>${esc(c.hint)}</small>` : ''}</button>`).join('')}</div>`, (v) => res(Number(v)));
     const img = $('#evimg', m.el);
     const path = ev.image || (ev.npc ? 'npc/' + ev.npc : 'bg/room_' + S.season);
-    if (await assetExists(path)) img.style.background = `url(${assetUrl(path)}) center/cover`; else img.innerHTML = `<div style="padding:14px;color:var(--muted);font-size:12px">🖼 ${path}.png (제미나이 프롬프트 팩 참조)</div>`;
+    if (await assetExists(path)) img.style.background = `url(${assetUrl(path)}) center/cover`;
+    else { img.classList.add('evimg-empty'); img.textContent = '📍 ' + ((IMG_BG[path] || IMG_NPC[path] || '').split(/[.:]/)[0] || '우리 집 거실'); }
   });
 }
 function fxSummary(effects) {
@@ -346,8 +352,8 @@ function renderEnding() {
       <div class="portrait" id="portrait"></div>
       <div><h2>10년 후</h2><div class="epi">${esc(e.epilogue)}</div></div>
     </div>
-    <div class="evimg ending-art" id="ending-art" style="margin-top:12px;aspect-ratio:16/9"></div>
-    ${mr && !mr.error ? `<div class="panel" style="margin-top:12px"><h2>별 조각</h2><div>✨ 별 조각 +${mr.shardsGained ?? 0}${(mr.newEndings || []).length ? ' · 새 엔딩 기록' : ''}${(mr.newUnlocks || []).length ? ` · 해금: ${(mr.newUnlocks || []).map(u => esc(u.name ?? u)).join(', ')}` : ''}${(mr.letterUnlocks || []).length ? ` · 새 편지 ${(mr.letterUnlocks || []).length}통 도착` : ''}</div></div>` : ''}
+    <div class="ending-art" id="ending-art" style="margin-top:12px"></div>
+    ${mr && !mr.error ? `<div class="panel" style="margin-top:12px"><h2>별 조각</h2><div>✨ 별 조각 +${mr.shardsGained ?? 0}${(mr.newEndings || []).length ? ' · 새 엔딩 기록' : ''}${(mr.newUnlocks || []).length ? ` · 해금: ${(mr.newUnlocks || []).map(u => esc(u.name ?? u)).join(', ')}` : ''}${(mr.letterUnlocks || []).length ? ` · 새 편지 ${(mr.letterUnlocks || []).length}통 도착` : ''}</div>${(mr.letterUnlocks || []).length ? `<div class="hint" style="margin-top:6px">✉ ${(mr.letterUnlocks || []).map(l => esc(`${l.from?.name ?? ''} — ${l.title ?? ''}`)).join(' · ')} <span>(엔딩 앨범의 편지함에서 읽을 수 있습니다)</span></div>` : ''}</div>` : ''}
     ${pmapHtml(e)}
     <div class="panel" style="margin-top:12px"><h2>마지막 대화 — 8년의 기록으로</h2><div class="words">${e.lastWords.map(w => `<div>${esc(w)}</div>`).join('')}</div></div>
     <div class="panel" style="margin-top:12px"><h2>엔딩 점수 상위 5</h2><div class="summary">${e.top.map(t => `<span class="k">${esc(t.name)}</span><span>${t.score}</span>`).join('')}</div>
@@ -355,7 +361,8 @@ function renderEnding() {
     <div class="actions" style="justify-content:center;margin:20px 0"><button class="primary" id="b-again">새로운 아이와 다시</button>${ALBUM && meta ? '<button id="b-album2">엔딩 앨범 · 편지함</button>' : ''}<button id="b-export">플레이 기록 복사(JSON)</button></div>
   </div>`));
   renderPortrait();
-  (async () => { const box = $('#ending-art'); if (!box) return; if (await assetExists('ending/' + e.id)) box.style.background = `url(${assetUrl('ending/' + e.id)}) center/cover`; else box.innerHTML = `<div style="padding:14px;color:var(--muted);font-size:12px">🖼 ending/${esc(e.id)}.png — 제미나이 생성 대기 (docs/game-design/gemini-chrome-runbook.md)</div>`; })();
+  (async () => { const box = $('#ending-art'); if (!box) return; if (await assetExists('ending/' + e.id)) { box.className = 'evimg ending-art'; box.style.aspectRatio = '16/9'; box.style.background = `url(${assetUrl('ending/' + e.id)}) center/cover`; } else box.innerHTML = `<div class="hint">🖼 엔딩 그림(ending/${esc(e.id)}.png)은 제미나이로 생성하면 여기에 나타납니다.</div>`; })();
+  mountPmap(e);
   if ($('#b-album2')) $('#b-album2').onclick = () => openAlbum();
   $('#b-again').onclick = () => renderTitle();
   $('#b-export').onclick = () => { const txt = E.serialize(S); navigator.clipboard?.writeText(txt).then(() => toast('플레이 기록을 복사했습니다.'), () => showModal(`<h3>플레이 기록</h3><p class="hint">아래 내용을 전부 선택해 복사하세요.</p><textarea id="exp-json" readonly style="width:100%;height:240px">${esc(txt)}</textarea><div class="choices"><button data-close>닫기</button></div>`)) ?? toast('이 환경에서는 복사할 수 없습니다.'); };
@@ -366,7 +373,7 @@ function renderEnding() {
 // 연간 보호자 결정 · 상점 · 소지품
 // ──────────────────────────────────────────────────────────────────────
 async function showAnnual(a) {
-  const v = await showModal(`<h3>🗓 ${esc(a.title)}</h3><div class="evimg" id="anImg"></div><p>${esc(a.text)}</p><div class="hint">1년에 한 번, 이 해의 방향을 정합니다.</div>
+  const v = await showModal(`<h3>🗓 ${esc(a.title)}</h3>${a.image ? `<div class="evimg" style="background:url(${assetUrl(a.image)}) center/cover"></div>` : ''}<p>${esc(a.text)}</p><div class="hint">1년에 한 번, 이 해의 방향을 정합니다.</div>
     <div class="choices">${a.options.map(o => `<button data-v="${o.index}"><b>${esc(o.label)}</b>${o.desc ? `<small>${esc(o.desc)}</small>` : ''}</button>`).join('')}</div>`);
   const r = E.applyAnnual(S, Number(v));
   log(`[연간 결정] ${a.title}: ${a.options.find(o => o.index === Number(v))?.label ?? ''}`);
