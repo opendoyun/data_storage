@@ -27,6 +27,8 @@ export function viewOf(s) {
     age: s.age, month: s.month, season: s.season, stage: s.stage,
     stress: s.stress, trust: s.trust, gold: s.gold, infamy: s.infamy,
     reputation: s.reputation, guardian: s.guardian, gHealth: s.guardianHealth,
+    item: s.items || {}, legacyCount: (s.legacy || []).length, playthrough: s.playthrough || 1,
+    seen: s.seen || {},
   };
 }
 

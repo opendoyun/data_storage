@@ -4,16 +4,20 @@ import { STATS, STAT_MAX, STAT_TENSION, PERSONALITY, NPCS, SEASONS, stageOf } fr
 import { ACTIVITIES, ACTIVITY_MAP, autonomyPreferences } from '../data/activities.js';
 import { EVENTS, EVENT_MAP } from '../data/events.js';
 import { ENDINGS } from '../data/endings.js';
+import { GUARDIANS } from '../data/guardians.js';
+import { ITEMS, ITEM_MAP } from '../data/items.js';
+import { ANNUAL } from '../data/annual.js';
 import { evalAll } from './conditions.js';
+import { fillName, josa } from './josa.js';
 
 export const START_AGE = 10;
 export const END_AGE = 18;
 export const SLOTS_PER_MONTH = 3;
 const FOOD_COST = 30;
-const GUARDIANS = {
-  knight:  { name: '전직 왕실 기사', gold: 800, pension: 110, bonusCat: 'body',   rel: { garrett: 25 } },
-  scholar: { name: '떠돌이 학자',   gold: 550, pension: 85,  bonusCat: 'mind',   rel: { elda: 20, loren: 10 } },
-};
+// 이벤트 밀도 (GDD 2: 월 평균 1.5회 목표). 시뮬레이터로 조정.
+export const EVENT_DENSITY = { base: 0.8, second: 0.45, third: 0.12, max: 3 };
+// 보호자 서사 상한 (GDD 10: 보호자 이벤트는 전체의 15% 이하)
+export const GUARDIAN_EVENT_CAP = 0.15;
 export { GUARDIANS };
 
 const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
@@ -21,9 +25,12 @@ const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
 // ──────────────────────────────────────────────────────────────────────
 // 새 게임
 // ──────────────────────────────────────────────────────────────────────
-export function newGame({ name = '루나', guardian = 'knight', seed = Date.now() % 2147483647, hair = 'silver', eyes = 'violet' } = {}) {
+// bonuses: 메타 진행 시작 보너스 { gold, stats:{}, relations:{}, flags:{}, items:{} }
+// legacy: 이전 회차 딸들 [{ name, endingId, endingName, cat }] (GDD 4.9 유산 시스템)
+export function newGame({ name = '루나', guardian = 'knight', seed = Date.now() % 2147483647, hair = 'silver', eyes = 'violet', bonuses = null, legacy = [], playthrough = 1 } = {}) {
   const rng = makeRng(seed);
   const g = GUARDIANS[guardian];
+  if (!g) throw new Error('알 수 없는 보호자: ' + guardian);
   const s = {
     version: 1, seed, rngState: rng.getState(),
     name, guardian, hair, eyes,
@@ -34,10 +41,20 @@ export function newGame({ name = '루나', guardian = 'knight', seed = Date.now(
     flags: {}, mastery: {}, counters: { refusals: 0, forced: 0, persuaded: 0, autonomy: 0, events: 0, months: 0, collapses: 0, quietMonths: 0 },
     stress: 20, trust: 50, gold: g.gold, reputation: 10, infamy: 0, guardianHealth: 80,
     seen: {}, pendingEvents: [], history: [], milestones: [],
+    items: {}, annualLog: [], persHistory: [], legacy: legacy.slice(0, 5), playthrough,
+    guardianEvents: 0,
     finished: false, ending: null,
   };
   for (const [k, v] of Object.entries(g.rel)) s.relations[k] += v;
   s.relations.cube = 40;
+  if (bonuses) {
+    if (bonuses.gold) s.gold += bonuses.gold;
+    for (const [k, v] of Object.entries(bonuses.stats || {})) s.stats[k] = clamp(s.stats[k] + v, 0, STAT_MAX);
+    for (const [k, v] of Object.entries(bonuses.relations || {})) s.relations[k] = clamp((s.relations[k] ?? 0) + v, 0, 100);
+    Object.assign(s.flags, bonuses.flags || {});
+    for (const [k, v] of Object.entries(bonuses.items || {})) s.items[k] = (s.items[k] || 0) + v;
+  }
+  s.persHistory.push({ age: START_AGE, ...s.personality });
   s.rngState = rng.getState();
   return s;
 }
@@ -65,6 +82,8 @@ export function applyEffects(s, effects, mult = 1) {
       case 'infamy': s.infamy = clamp(s.infamy + v, 0, 100); break;
       case 'reputation': s.reputation = clamp(s.reputation + v, 0, 100); break;
       case 'gHealth': s.guardianHealth = clamp(s.guardianHealth + v, 0, 100); break;
+      case 'item': s.items[id] = Math.max(0, (s.items[id] || 0) + v); break;
+      case 'count': s.counters[id] = (s.counters[id] || 0) + v; break;
       default: throw new Error('알 수 없는 효과 키: ' + key);
     }
   }
@@ -140,21 +159,21 @@ export function resolveRefusal(s, proposal, decision) {
     applyEffects(s, { trust: +4, stress: -3, 'pers.agree': +1 });
     text = `${s.name}의 뜻을 받아들였다. (신뢰 +4)`;
   } else if (decision === 'persuade') {
-    const power = s.stats.elo * 0.5 + s.trust * 2 + (s.guardian === 'scholar' ? 40 : 0);
+    const power = s.stats.elo * 0.5 + s.trust * 2 + (GUARDIANS[s.guardian]?.persuade ?? 0);
     const dc = 150 + Math.max(0, -s.personality.agree) * 1.5 + s.stress;
     if (r.next() * (power + 1) > r.next() * dc) {
       s.counters.persuaded++;
       applyEffects(s, { trust: +2, 'pers.agree': +2 });
-      text = `차분히 이야기했다. ${s.name}이 고개를 끄덕였다. (설득 성공, 신뢰 +2)`;
+      text = `차분히 이야기했다. ${josa(s.name,'이')} 고개를 끄덕였다. (설득 성공, 신뢰 +2)`;
     } else {
       final = proposal.alternative;
       applyEffects(s, { trust: -2, stress: +4 });
-      text = `설득은 통하지 않았다. 결국 ${s.name}이 원하는 대로 ${ACTIVITY_MAP[final].name}을(를) 하기로. (신뢰 -2)`;
+      text = `설득은 통하지 않았다. 결국 ${josa(s.name,'이')} 원하는 대로 ${ACTIVITY_MAP[final].name}을(를) 하기로. (신뢰 -2)`;
     }
   } else if (decision === 'force') {
     s.counters.forced++;
     applyEffects(s, { trust: -8, stress: +12, 'pers.agree': -3 });
-    text = `"그냥 하라는 대로 해." ${s.name}은 말없이 방으로 들어갔다. (신뢰 -8, 스트레스 +12)`;
+    text = `"그냥 하라는 대로 해." ${josa(s.name,'은')} 말없이 방으로 들어갔다. (신뢰 -8, 스트레스 +12)`;
   }
   saveRng(s, r);
   return { finalActivity: final, text };
@@ -175,7 +194,7 @@ export function runMonth(s, slots) {
   // 탈진 상태(전월 스트레스 100)면 강제 휴식 1슬롯
   let effMult = 1;
   if (s.flags._collapsed) {
-    lines.push(`${s.name}은 한동안 자리에서 일어나지 못했다. 상순은 쉬어야 했다.`);
+    lines.push(`${josa(s.name,'은')} 한동안 자리에서 일어나지 못했다. 상순은 쉬어야 했다.`);
     slots = ['rest', slots[1], slots[2]];
     s.flags._collapsed = false;
   } else if (s.stress >= 80) {
@@ -196,7 +215,7 @@ export function runMonth(s, slots) {
       id = weightedPick(r, prefs, []);
       act = ACTIVITY_MAP[id];
       if (act.minAge && s.age < act.minAge) { id = 'outing'; act = ACTIVITY_MAP[id]; }
-      lines.push(`[자율] ${s.name}은 스스로 「${act.name}」을(를) 택했다.`);
+      lines.push(`[자율] ${josa(s.name,'은')} 스스로 「${act.name}」을(를) 택했다.`);
       // 숨은 이벤트 플래그: 몰래 모험 등
       if (id === 'adventure' && r.chance(0.5)) s.flags.secret_adventure = true;
       if (id === 'graveyard') s.flags.secret_night_work = true;
@@ -220,16 +239,22 @@ export function runMonth(s, slots) {
     s.stress = clamp(s.stress + act.stress * (s.stress >= 60 ? 1.1 : 1), 0, 100);
     if (act.rep && r.chance(0.5)) s.reputation = clamp(s.reputation + act.rep, 0, 100);
     s.gold += act.gold;
-    if (act.gold > 0 && act.type === 'work') s.gold += Math.round(level * 5); // 숙련 보너스
+    if (act.gold > 0 && act.type === 'work') s.gold += Math.round(level * 5 + (g.workBonus ? act.gold * g.workBonus : 0)); // 숙련·출신 보너스
     if (act.id === 'adventure') {
       s.counters.adventures = (s.counters.adventures || 0) + 1;
-      if (r.chance(0.25)) { const loot = r.int(30, 120); s.gold += loot; lines.push(`모험에서 보물을 찾았다! (+${loot}G)`); }
-      if (r.chance(0.15)) { applyEffects(s, { stress: +10, 'stat.hp': -5 }); lines.push('모험 중 다쳤다. (체력 -5)'); }
+      if (r.chance(0.25)) { const loot = Math.round(r.int(30, 120) * (g.adventureBonus ? 1.5 : 1)); s.gold += loot; lines.push(`모험에서 보물을 찾았다! (+${loot}G)`); }
+      if (r.chance(g.adventureBonus ? 0.075 : 0.15)) { applyEffects(s, { stress: +10, 'stat.hp': -5 }); lines.push('모험 중 다쳤다. (체력 -5)'); }
     }
     if (act.id === 'graveyard' && r.chance(0.2)) { applyEffects(s, { infamy: +3 }); lines.push('밤에 수상한 사람들과 마주쳤다. 소문이 돈다. (악평 +3)'); }
     executed.push({ slot: i, id, autonomous, level });
   }
 
+  // 소지품의 매달 효과 (GDD 4.5 의상·소품)
+  for (const [itemId, n] of Object.entries(s.items)) {
+    const it = ITEM_MAP[itemId];
+    if (n > 0 && it?.monthly) applyEffects(s, it.monthly);
+  }
+  if (g.stressRelief) s.stress = clamp(s.stress - g.stressRelief, 0, 100);
   // 고정비·연금
   s.gold += g.pension - FOOD_COST;
   if (s.gold < 0) {
@@ -245,7 +270,7 @@ export function runMonth(s, slots) {
   if (s.stress >= 100) {
     s.flags._collapsed = true; s.counters.collapses++;
     applyEffects(s, { trust: -6, 'stat.hp': -8 });
-    lines.push(`${s.name}이 쓰러졌다. 열이 나고 며칠을 앓았다. (신뢰 -6, 체력 -8)`);
+    lines.push(`${josa(s.name,'이')} 쓰러졌다. 열이 나고 며칠을 앓았다. (신뢰 -6, 체력 -8)`);
     s.stress = 70;
   }
 
@@ -271,31 +296,35 @@ function weightedPick(r, weights, exclude) {
   return entries[entries.length - 1][0];
 }
 
-function pickEvents(s, r, executed) {
-  const slotIds = executed.map(e => e.id);
-  const eligible = EVENTS.filter(ev => {
+export function eligibleEvents(s, slotIds = []) {
+  const guardianCapped = s.counters.events >= 10 && (s.guardianEvents || 0) / s.counters.events >= GUARDIAN_EVENT_CAP;
+  return EVENTS.filter(ev => {
     if (ev.chainOnly) return false;
+    if (ev.guardian && guardianCapped) return false;
     if (s.seen[ev.id] && !ev.repeatable) return false;
     if (ev.age && (s.age < ev.age[0] || s.age > ev.age[1])) return false;
     if (ev.season && ev.season !== s.season) return false;
     if (ev.month && ev.month !== s.month) return false;
-    if (ev.requiresActivity && !slotIds.includes(ev.requiresActivity)) return false;
+    if (ev.requiresActivity && !(Array.isArray(ev.requiresActivity) ? ev.requiresActivity.some(a => slotIds.includes(a)) : slotIds.includes(ev.requiresActivity))) return false;
     return evalAll(s, ev.conditions);
   });
+}
+
+function pickEvents(s, r, executed) {
+  const eligible = eligibleEvents(s, executed.map(e => e.id));
   const fixed = eligible.filter(e => e.fixed);
   const pool = eligible.filter(e => !e.fixed);
   const out = [...fixed];
-  // 월 1.5회 밀도 목표: 기본 55%, 조용한 달이 2회 연속이면 100%
-  const chance = s.counters.quietMonths >= 1 ? 1.0 : 0.55;
-  if (pool.length && r.chance(chance)) {
-    const w = Object.fromEntries(pool.map(e => [e.id, e.weight ?? 1]));
-    out.push(EVENT_MAP[weightedPick(r, w, [])]);
-    if (pool.length > 1 && r.chance(0.2)) {
-      const w2 = { ...w }; delete w2[out[out.length - 1].id];
-      out.push(EVENT_MAP[weightedPick(r, w2, [])]);
-    }
+  // 월 1.5회 밀도 목표: 조용한 달 다음 달은 100%
+  const D = EVENT_DENSITY;
+  const w = Object.fromEntries(pool.map(e => [e.id, e.weight ?? 1]));
+  const draw = () => { const keys = Object.keys(w); if (!keys.length) return; const id = weightedPick(r, w, []); delete w[id]; out.push(EVENT_MAP[id]); };
+  if (pool.length && r.chance(s.counters.quietMonths >= 1 ? 1.0 : D.base)) {
+    draw();
+    if (r.chance(D.second)) draw();
+    if (r.chance(D.third)) draw();
   }
-  return out.slice(0, 3);
+  return out.slice(0, D.max);
 }
 
 // ──────────────────────────────────────────────────────────────────────
@@ -307,14 +336,17 @@ export function currentEvent(s) {
 }
 
 export function renderEvent(s, ev) {
-  const fill = (t) => typeof t === 'function' ? t(s) : String(t).replaceAll('{name}', s.name);
+  const fill = (t) => typeof t === 'function' ? t(s) : fillName(t, s.name, GUARDIANS[s.guardian]?.call);
   return {
     id: ev.id, title: fill(ev.title), text: fill(ev.text), image: ev.image || null, npc: ev.npc || null,
-    choices: ev.choices.filter(c => evalAll(s, c.conditions)).map((c, i) => ({ index: ev.choices.indexOf(c), label: fill(c.label), hint: c.check ? `판정: ${STATS.find(x => x.id === c.check.stat)?.name ?? c.check.stat}` : null })),
+    choices: ev.choices.filter(c => evalAll(s, c.conditions)).map((c, i) => ({ index: ev.choices.indexOf(c), label: fill(c.label), minigame: c.minigame || null,
+      check: c.check ? { stat: c.check.stat, dc: c.check.dc, value: (s.stats[c.check.stat] ?? 0) + (c.check.bonus ? c.check.bonus(s) : 0) } : null,
+      hint: c.check ? `판정: ${STATS.find(x => x.id === c.check.stat)?.name ?? c.check.stat}${c.minigame ? ' · 미니게임' : ''}` : null })),
   };
 }
 
-export function chooseEvent(s, eventId, choiceIndex) {
+// opts.mgScore: 미니게임 결과(0~1). 주어지면 판정 주사위(±60)를 대체한다. 없으면 자동 해결(무작위).
+export function chooseEvent(s, eventId, choiceIndex, opts = {}) {
   const ev = EVENT_MAP[eventId];
   if (!ev) throw new Error('없는 이벤트: ' + eventId);
   const choice = ev.choices[choiceIndex];
@@ -322,11 +354,13 @@ export function chooseEvent(s, eventId, choiceIndex) {
   const r = rngOf(s);
   s.seen[ev.id] = (s.seen[ev.id] || 0) + 1;
   s.counters.events++;
+  if (ev.guardian) s.guardianEvents = (s.guardianEvents || 0) + 1;
   s.pendingEvents = s.pendingEvents.filter(id => id !== eventId);
   let outcome, effects;
   if (choice.check) {
     const val = (s.stats[choice.check.stat] ?? 0) + (choice.check.bonus ? choice.check.bonus(s) : 0);
-    const roll = val + r.int(-60, 60);
+    const swing = typeof opts.mgScore === 'number' ? Math.round((clamp(opts.mgScore, 0, 1) - 0.5) * 120) : r.int(-60, 60);
+    const roll = val + swing;
     const ok = roll >= choice.check.dc;
     outcome = ok ? choice.success : choice.fail;
   } else outcome = choice;
@@ -334,7 +368,7 @@ export function chooseEvent(s, eventId, choiceIndex) {
   applyEffects(s, effects);
   if (outcome.next) s.pendingEvents.unshift(outcome.next);
   saveRng(s, r);
-  const fill = (t) => typeof t === 'function' ? t(s) : String(t ?? '').replaceAll('{name}', s.name);
+  const fill = (t) => typeof t === 'function' ? t(s) : fillName(t, s.name, GUARDIANS[s.guardian]?.call);
   return { text: fill(outcome.result || ''), effects, success: choice.check ? outcome === choice.success : null, next: outcome.next || null };
 }
 
@@ -360,10 +394,52 @@ export function endMonth(s) {
     if (st.faith + st.moral > 300) p.good = clamp(p.good + 2, -100, 100);
     if (s.infamy > 30) p.good = clamp(p.good - 3, -100, 100);
     s.stage = stageOf(s.age).id;
+    s.persHistory.push({ age: s.age, ...s.personality });
     if (s.age >= END_AGE) { s.finished = true; s.ending = computeEnding(s); res.finished = true; }
+    else res.annual = annualDecision(s);
   }
   s.season = SEASONS[s.month - 1];
   return res;
+}
+
+// ──────────────────────────────────────────────────────────────────────
+// 연간 보호자 결정 (GDD 2: 1년에 1번 큰 방향 결정)
+// ──────────────────────────────────────────────────────────────────────
+export function annualDecision(s) {
+  const a = ANNUAL[s.age];
+  if (!a) return null;
+  const fill = (t) => typeof t === 'function' ? t(s) : fillName(t, s.name, GUARDIANS[s.guardian]?.call);
+  return { age: s.age, title: fill(a.title), text: fill(a.text), image: a.image || null,
+    options: a.options.map((o, i) => ({ index: i, label: fill(o.label), desc: fill(o.desc || ''), available: evalAll(s, o.conditions) })).filter(o => o.available) };
+}
+export function applyAnnual(s, optionIndex) {
+  const a = ANNUAL[s.age];
+  if (!a) throw new Error('이 나이에는 연간 결정이 없습니다.');
+  const o = a.options[optionIndex];
+  if (!o || !evalAll(s, o.conditions)) throw new Error('선택할 수 없는 연간 결정');
+  applyEffects(s, o.effects);
+  s.annualLog.push({ age: s.age, id: o.id ?? String(optionIndex), label: typeof o.label === 'string' ? o.label : String(optionIndex) });
+  const fill = (t) => typeof t === 'function' ? t(s) : fillName(t, s.name, GUARDIANS[s.guardian]?.call);
+  return { text: fill(o.result || ''), effects: o.effects || {} };
+}
+
+// ──────────────────────────────────────────────────────────────────────
+// 상점 (GDD 4.5)
+// ──────────────────────────────────────────────────────────────────────
+export function shopList(s) {
+  return ITEMS.filter(it => (!it.minAge || s.age >= it.minAge) && evalAll(s, it.conditions)).map(it => ({ ...it, owned: s.items[it.id] || 0, affordable: s.gold >= it.price, soldOut: it.unique && (s.items[it.id] || 0) > 0 }));
+}
+export function buyItem(s, itemId) {
+  const it = ITEM_MAP[itemId];
+  if (!it) throw new Error('없는 아이템: ' + itemId);
+  if (it.minAge && s.age < it.minAge) throw new Error('아직 살 수 없는 나이');
+  if (!evalAll(s, it.conditions)) throw new Error('구매 조건 불충족');
+  if (it.unique && (s.items[itemId] || 0) > 0) throw new Error('이미 가지고 있음');
+  if (s.gold < it.price) throw new Error('돈이 부족함');
+  s.gold -= it.price;
+  s.items[itemId] = (s.items[itemId] || 0) + 1;
+  if (it.onBuy) applyEffects(s, it.onBuy);
+  return { item: it };
 }
 
 function yearReport(s) {
@@ -400,14 +476,15 @@ export function computeEnding(s) {
   const runner = scored.find(x => x.id !== chosen.id && !x.hidden && x.score > 0);
   const def = ENDINGS.find(e => e.id === chosen.id);
   return { id: chosen.id, name: chosen.name, cat: chosen.cat, hidden: chosen.hidden, runnerUp: runner ? { id: runner.id, name: runner.name } : null,
-    epilogue: typeof def.epilogue === 'function' ? def.epilogue(s) : def.epilogue.replaceAll('{name}', s.name),
+    epilogue: typeof def.epilogue === 'function' ? def.epilogue(s) : fillName(def.epilogue, s.name, GUARDIANS[s.guardian]?.call),
+    persHistory: s.persHistory, annualLog: s.annualLog,
     lastWords: lastDialogue(s), top: scored.slice(0, 5).map(x => ({ id: x.id, name: x.name, score: Math.round(x.score) })) };
 }
 
 // 8년의 기록으로 만드는 '마지막 대화' (GDD 5.2)
 export function lastDialogue(s) {
   const L = [];
-  const g = s.guardian === 'knight' ? '아빠' : '선생님';
+  const g = GUARDIANS[s.guardian]?.call ?? '아빠';
   const name = s.name;
   const first300 = s.milestones.find(m => m.th === 300);
   const statName = (id) => STATS.find(x => x.id === id).name;
@@ -432,4 +509,4 @@ export function lastDialogue(s) {
 // 직렬화
 export function serialize(s) { return JSON.stringify(s); }
 export function deserialize(json) { return JSON.parse(json); }
-export { ACTIVITIES, ACTIVITY_MAP, STATS, PERSONALITY, NPCS, ENDINGS, EVENTS };
+export { ACTIVITIES, ACTIVITY_MAP, STATS, PERSONALITY, NPCS, ENDINGS, EVENTS, EVENT_MAP, ITEMS, ANNUAL };
