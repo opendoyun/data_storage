@@ -1,7 +1,7 @@
 // 공용 플래그 등록부 (콘텐츠 계약서 §6과 동일). 여러 파일이 공유하는 플래그만 여기 등록한다.
 // setBy: 세팅 책임 배치. 검증기는 파일 단위 검사 때 이 플래그들을 '선언됨'으로 취급하고, 전체 검사 때 실제 세팅 여부를 확인한다.
 export const PUBLIC_FLAGS = {
-  met_elda: ['core', 'b01'], met_leon: ['core', 'b01'], magic_awake: ['core', 'b13'], knows_origin: ['core', 'b05'],
+  met_elda: ['core', 'b01'], met_leon: ['core', 'b01'], magic_awake: ['core', 'b13', 'b05'], knows_origin: ['core', 'b05'],
   elda_secret_1: ['core', 'b05'], tower_choice_hers: ['core', 'b05'], tower_lessons: ['core', 'b05'],
   leon_promise: ['core', 'b11'], leon_love: ['core', 'b11'], ball_won: ['core', 'b09', 'b11'], tea_party: ['core', 'b09', 'b11'],
   stage_star: ['core', 'b08'], art_path: ['core', 'b04a'], scholar_path: ['core', 'b04b'], knight_path: ['core', 'b04a'],

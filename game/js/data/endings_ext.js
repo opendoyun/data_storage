@@ -46,7 +46,7 @@ export const ENDINGS_EXT = [
   // 고르게 키운 아이에게 넓은 가중치가 다 더해져 게이트만 열리면 거의 이기던 것을 줄였다(외향은 pers 계수로만 반영).
   { id: 'ship_captain', name: '선장', cat: '무예', weights: { agi: 0.8, hp: 0.6, elo: 0.5, int: 0.3 }, pers: { extro: 0.3, roman: 0.2 },
     gates: ['flag.sea_path', 'stat.agi >= 250', 'stat.hp >= 240'], bonus: [{ when: ['rel.garrett >= 50'], add: 100 }, { when: ['item.star_atlas >= 1'], add: 80 }, { when: ['flag.ran_away'], add: 60 }],
-    epilogue: '은갈매기호의 새 선장은 졸린 눈의 은발인데, 폭풍이 오면 누구보다 먼저 돛대에 오른다. 마렌 선장에게 키를 물려받던 날, {name은} 손에 익은 매듭 하나에 이름을 붙였다. "집으로 돌아오는 매듭." 그 뒤로 은갈매기호는 어느 바다에 다녀오든 이 항구에서 열흘을 쉰다. 선장이 평원에 다녀와야 해서.' },
+    epilogue: '샛별호의 새 선장은 졸린 눈의 은발인데, 폭풍이 오면 누구보다 먼저 돛대에 오른다. 마렌 선장에게 키를 물려받던 날, {name은} 손에 익은 매듭 하나에 이름을 붙였다. "집으로 돌아오는 매듭." 그 뒤로 샛별호는 어느 바다에 다녀오든 이 항구에서 열흘을 쉰다. 선장이 평원에 다녀와야 해서.' },
   { id: 'knight_errant', name: '편력 기사', cat: '무예', weights: { moral: 1.0, str: 0.7, hp: 0.5, agi: 0.4 }, pers: { good: 0.5, agree: -0.2 },
     gates: ['flag.knight_oath_wander', 'stat.str >= 220', 'stat.moral >= 150'], bonus: [{ when: ['pers.good >= 30'], add: 150 }, { when: ['stat.faith >= 150'], add: 60 }],
     epilogue: '로데릭에게 받은 문장 없는 방패에는 이제 문장이 있다. 세 개의 달 아래 지붕 하나. 편력 기사 {name은} 약한 이의 편에 서고, 받은 것보다 많이 돌려주고, 길이 끝날 때까지 걷는다. 그리고 그 길은 해마다 한 번, 꼭 평원의 작은 집 문 앞에서 끝난다.' },

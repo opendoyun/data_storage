@@ -67,7 +67,7 @@ const ENDINGS_CORE = [
     epilogue: '평원 가장 넓은 밭. {name은} 수확제마다 통나무 들기에 나가고, 매년 이긴다. 당신 자리는 늘 맨 앞줄이다.' },
   { id: 'chef', name: '요리사', cat: '생활/상업', weights: { sens: 0.6, hp: 0.5, elo: 0.3, chm: 0.3 }, pers: { extro: 0.2 },
     gates: ['mastery.diner >= 10', 'stat.sens >= 150'], bonus: [],
-    epilogue: '{name}의 식당 메뉴에는 "아빠의 탄 파이"가 있다. 제일 안 팔리고, 제일 안 내린다.' },
+    epilogue: '{name}의 식당 메뉴에는 "{call}의 탄 파이"가 있다. 제일 안 팔리고, 제일 안 내린다.' },
   { id: 'innkeeper', name: '여관 주인', cat: '생활/상업', weights: { chm: 0.6, elo: 0.5, hp: 0.4, eti: 0.2 }, pers: { extro: 0.3, ambit: -0.2 },
     gates: ['mastery.inn >= 10'], bonus: [{ when: ['flag.stranger_asked'], add: 50 }],
     epilogue: '항구의 여관 「세 개의 달」. 후드 쓴 손님이 오면 {name은} 웃으며 묻는다. "은발 아이 찾으세요? 저예요."' },
@@ -80,7 +80,7 @@ const ENDINGS_CORE = [
     gates: ['stat.faith >= 320', 'stat.moral >= 300'], bonus: [{ when: ['count.forced <= 2'], add: 80 }],
     epilogue: '{name이} 지나간 곳에 병이 멎었다고들 한다. 그녀는 그런 말을 들으면 웃으며 고개를 젓고, 약초를 건넨다.' },
   { id: 'pilgrim', name: '순례자', cat: '신앙', weights: { faith: 0.7, hp: 0.5, sens: 0.4 }, pers: { ambit: -0.5, extro: -0.2 },
-    gates: ['stat.faith >= 200'], bonus: [],
+    gates: ['stat.faith >= 200'], bonus: [{ when: ['seen.b04b_pilgrim_return >= 1'], add: 220 }],
     epilogue: '{name은} 걷는다. 왕국 끝에서 끝까지. 돌아올 때마다 신발이 바뀌어 있고, 이야기가 늘어 있다.' },
 
   // ── 어둠 ──────────────────────────────────────────────────────────

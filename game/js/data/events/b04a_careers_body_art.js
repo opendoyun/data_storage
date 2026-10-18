@@ -20,7 +20,7 @@
 //                  ④ smith_star_iron ⇒ smith_forge ⑤ dance_rehearsal ⇒ dance_debut (dance_debut은 랜덤 재진입도 가능)
 // 미니게임(판정 23개 중 5개): 모험 errant_escort·guard_trial(대련) · 무도회 dance_festival·dance_debut · 요리 cook_banquet
 // 보호자 knight 출신의 과거(b06: 흑교의 오명)와 어긋나지 않게, 그 이름을 내세우는 장면은 guardian_name_cleared로 갈린다.
-// 반복 등장 보조 인물(관계 수치 없음): 마렌 선장(상선 은갈매기호, 가렛의 옛 동료) · 갑판장 베인 · 로데릭(회색 망토의 편력
+// 반복 등장 보조 인물(관계 수치 없음): 마렌 선장(상선 샛별호, 가렛의 옛 동료) · 갑판장 베인 · 로데릭(회색 망토의 편력
 //   기사. b04b의 등대 관측사 오스윈과 다른 사람) · 셀린(극단의 주역 무희) · 베라 할머니(재봉소) · 도르완 영감(대장장이,
 //   네리의 할아버지) · 고든 아저씨(식당) · 한스 아저씨(이웃 농부, b01·b08과 같은 사람) · 「세 개의 달」 노부부(여관, b08과 공유)
 // 공주의 결(character-design.md v2): 은백색 생머리, 차분하고 살짝 나른한 붉은 눈. 호들갑 대신 담담하게 말하고,
@@ -48,9 +48,9 @@ export default [
 
   // ── 선장 (연쇄 ①) ───────────────────────────────────────────────────
   {
-    id: 'b04a_sea_offer', title: '은갈매기호', age: [15, 17], weight: 2.5, image: 'bg/harbor',
+    id: 'b04a_sea_offer', title: '샛별호', age: [15, 17], weight: 2.5, image: 'bg/harbor',
     conditions: ['stat.hp >= 180', 'stat.agi >= 130', '!flag.sea_path'],
-    text: `항구에서 돌아온 {name}의 손바닥에 밧줄 자국이 나 있었다. 가렛의 옛 동료라는 마렌 선장의 배, 은갈매기호에 짐 싣는 일을 거들었단다. "다음 달 연안 항해에 견습 선원으로 타 보래. 열흘이면 돌아와." 말은 담담한데 손끝에서 금빛 별이 자꾸 새어 나왔다.`,
+    text: `항구에서 돌아온 {name}의 손바닥에 밧줄 자국이 나 있었다. 가렛의 옛 동료라는 마렌 선장의 배, 샛별호에 짐 싣는 일을 거들었단다. "다음 달 연안 항해에 견습 선원으로 타 보래. 열흘이면 돌아와." 말은 담담한데 손끝에서 금빛 별이 자꾸 새어 나왔다.`,
     choices: [
       { label: '열흘만 다녀와 봐', effects: { 'stat.agi': +3, trust: +4, stress: +4, 'pers.extro': +1 },
         result: `"응. 열흘." {name은} 짧게 대답하고 방으로 들어갔다. 그날 밤 문틈으로 밧줄 매듭 묶는 소리와 금빛 별이 늦도록 새어 나왔다.`, next: 'b04a_sea_deck' },
@@ -95,7 +95,7 @@ export default [
         result: `폭풍 속에서 {name은} 겁에 질린 막내 선원 둘을 붙들고 노래를 불렀다. 마렌 선장이 말했다. "배는 돛으로 가지만, 사람은 저런 녀석이 붙든다."` },
       { label: '이번 항해는 안 된다', effects: { trust: -5, stress: +8, 'pers.agree': -1, 'stat.sens': +2 },
         result: (s) => s.personality.agree >= 0
-          ? `{name은} 말없이 짐을 풀었다. 은갈매기호가 떠나는 날, 언덕 위에서 돛이 수평선 너머로 사라질 때까지 서 있었다.`
+          ? `{name은} 말없이 짐을 풀었다. 샛별호가 떠나는 날, 언덕 위에서 돛이 수평선 너머로 사라질 때까지 서 있었다.`
           : `"한 번 보내 줬으면서 왜 이제 와서?" 문이 쾅 닫혔다. 그달 내내 {name은} 항구 쪽으로만 산책을 나갔다.` },
       { label: '가렛에게 동행을 부탁한다', conditions: ['rel.garrett >= 50'], effects: { 'rel.garrett': +5, 'stat.str': +4, 'stat.agi': +5, trust: +3, 'flag.b04a_sea_trusted': true },
         result: `"애 보러 가는 거지, 바다 보러 가는 거 아니다." 투덜대던 가렛이 갑판에서 제일 신나 보였다. 둘은 폭풍을 함께 버텼고, {name이} 가렛에게 새 매듭을 가르쳤다.` },
@@ -104,7 +104,7 @@ export default [
   {
     id: 'b04a_sea_letter', title: '갈매기 봉랍', age: [17, 17], weight: 3.5, image: 'bg/harbor',
     conditions: ['flag.b04a_sea_trusted'],
-    text: `갈매기 문장이 찍힌 편지가 왔다. 마렌 선장의 투박한 글씨. "내년 봄, 은갈매기호 이등항해사 자리를 비워 두겠다. 열여덟 먹은 항해사는 처음이지만, 저 녀석이라면 처음이어도 된다." {name이} 편지를 두 번, 세 번 읽었다.`,
+    text: `갈매기 문장이 찍힌 편지가 왔다. 마렌 선장의 투박한 글씨. "내년 봄, 샛별호 이등항해사 자리를 비워 두겠다. 열여덟 먹은 항해사는 처음이지만, 저 녀석이라면 처음이어도 된다." {name이} 편지를 두 번, 세 번 읽었다.`,
     choices: [
       { label: '축하해, 항해사님', effects: { 'stat.elo': +4, 'stat.agi': +5, reputation: +5, trust: +4, 'pers.ambit': +2 },
         result: `{name은} 편지를 액자에 넣어 벽에 걸었다. 그 밑에 작은 글씨를 덧붙였다. '첫 배는 {call이} 태워 줬다.'` },
@@ -116,7 +116,7 @@ export default [
       { label: '가까운 바다를 권한다', effects: { trust: -3, 'pers.roman': -2, 'stat.hp': +3, stress: +4 },
         result: (s) => s.personality.roman >= 20
           ? `"가까운 바다는 바다가 아니야." {name은} 편지를 품에 넣고 방으로 들어갔다. 답장은 당신 몰래 썼다.`
-          : `{name은} 한참 생각하더니 고개를 끄덕였다. "연안 배도 배니까." 그래도 은갈매기호의 편지는 버리지 않았다.` },
+          : `{name은} 한참 생각하더니 고개를 끄덕였다. "연안 배도 배니까." 그래도 샛별호의 편지는 버리지 않았다.` },
       { label: '배 고양이를 데려가렴', conditions: ['flag.has_cat'], effects: { 'stat.sens': +4, stress: -8, trust: +3 },
         result: `"배에는 쥐잡이 고양이가 꼭 있어야 한대." 난롯가의 달무리는 하품만 했다. {name은} 결국 달무리를 꼭 닮은 새끼 고양이를 얻어 오기로 했다.` },
     ],
