@@ -113,3 +113,15 @@ body[data-season=winter]{--room-tint:radial-gradient(1100px 600px at 50% -10%,#2
 .diary .log{color:#4a3a2a;max-height:220px}.diary .log div{border-bottom:none;padding:2px 0;line-height:24px;font-family:"Nanum Pen Script","Gaegu","Noto Sans KR",cursive}
 @media(prefers-reduced-motion:reduce){body.in-room{background-attachment:scroll}}
 @media(max-width:720px){.wall-calendar .cal-month{font-size:36px}.calendar{grid-template-columns:1fr}}
+/* 모바일: 초상은 작게 옆으로, 헤더 압축 */
+@media(max-width:720px){
+  header.top{flex-direction:column;align-items:stretch;gap:8px;padding-bottom:10px}
+  header.top h1{font-size:18px;white-space:nowrap}
+  .topbar-right{gap:6px}.topbar-right button{padding:6px 10px;font-size:13px}.chip{font-size:12px}
+  .frame-portrait{display:grid;grid-template-columns:120px 1fr;gap:4px 12px;align-items:start}
+  .frame-portrait .portrait{grid-row:span 5;border-width:4px}
+  .frame-portrait .meter{margin-top:2px}
+  .frame-portrait .hint{grid-column:2}
+  .actlist{max-height:300px}
+  .slot{min-height:auto}
+}
