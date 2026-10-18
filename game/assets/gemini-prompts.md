@@ -2621,7 +2621,7 @@ text, letters, words, numbers, captions, speech bubbles, labels, signs with writ
 - Costume rule: black-and-white base outfit + exactly ONE accent colour + gold sparkles.
 - Modesty rule (every age, 10 to 28): wholesome and age-appropriate. High or modest neckline, sleeves that cover the shoulders, skirt or trousers well below the knee (ankle-length preferred), nothing tight, sheer or cut out. Relaxed natural pose, eye-level camera. 나이에 맞는 체형, 단정한 옷차림.
 [THIS IMAGE — ending/chef · 엔딩 일러스트 «요리사» (생활/상업)]
-Epilogue (에필로그 원문 — 이 장면의 바탕): «루나의 식당 메뉴에는 "아빠의 탄 파이"가 있다. 제일 안 팔리고, 제일 안 내린다.»
+Epilogue (에필로그 원문 — 이 장면의 바탕): «루나의 식당 메뉴에는 "보호자의 탄 파이"가 있다. 제일 안 팔리고, 제일 안 내린다.»
 Scene: A cozy restaurant: Luna as a chef in a white chef coat and black apron proudly presents a slightly burnt pie, warm kitchen light, patrons smiling in the background, menu board without readable writing.
 Luna is shown as an ADULT WOMAN around 28 years old (ten years after she turned 18): same face and features as the character sheet but mature and calm, same waist-length silver-white straight hair, crimson eyes, gold star sparkles. Dressed modestly (covered shoulders and chest, long sleeves or a cape, long skirt or trousers).
 Costume accent for this ending: gold, on a black-and-white base.
@@ -3129,7 +3129,7 @@ text, letters, words, numbers, captions, speech bubbles, labels, signs with writ
 - Costume rule: black-and-white base outfit + exactly ONE accent colour + gold sparkles.
 - Modesty rule (every age, 10 to 28): wholesome and age-appropriate. High or modest neckline, sleeves that cover the shoulders, skirt or trousers well below the knee (ankle-length preferred), nothing tight, sheer or cut out. Relaxed natural pose, eye-level camera. 나이에 맞는 체형, 단정한 옷차림.
 [THIS IMAGE — ending/ship_captain · 엔딩 일러스트 «선장» (무예)]
-Epilogue (에필로그 원문 — 이 장면의 바탕): «은갈매기호의 새 선장은 졸린 눈의 은발인데, 폭풍이 오면 누구보다 먼저 돛대에 오른다. 마렌 선장에게 키를 물려받던 날, 루나는 손에 익은 매듭 하나에 이름을 붙였다. "집으로 돌아오는 매듭." 그 뒤로 은갈매기호는 어느 바다에 다녀오든 이 항구에서 열흘을 쉰다. 선장이 평원에 다녀와야 해서.»
+Epilogue (에필로그 원문 — 이 장면의 바탕): «샛별호의 새 선장은 졸린 눈의 은발인데, 폭풍이 오면 누구보다 먼저 돛대에 오른다. 마렌 선장에게 키를 물려받던 날, 루나는 손에 익은 매듭 하나에 이름을 붙였다. "집으로 돌아오는 매듭." 그 뒤로 샛별호는 어느 바다에 다녀오든 이 항구에서 열흘을 쉰다. 선장이 평원에 다녀와야 해서.»
 Scene: The deck of a merchant sailing ship on a bright windy sea (no readable name on the hull): Luna as the ship's captain in a long black captain's coat with crimson trim stands at the wheel, hair streaming in the wind, tying a sailor's knot; the home harbor and the far plains on the horizon.
 Luna is shown as an ADULT WOMAN around 28 years old (ten years after she turned 18): same face and features as the character sheet but mature and calm, same waist-length silver-white straight hair, crimson eyes, gold star sparkles. Dressed modestly (covered shoulders and chest, long sleeves or a cape, long skirt or trousers).
 Costume accent for this ending: crimson red, on a black-and-white base.
@@ -3165,7 +3165,7 @@ text, letters, words, numbers, captions, speech bubbles, labels, signs with writ
 - Costume rule: black-and-white base outfit + exactly ONE accent colour + gold sparkles.
 - Modesty rule (every age, 10 to 28): wholesome and age-appropriate. High or modest neckline, sleeves that cover the shoulders, skirt or trousers well below the knee (ankle-length preferred), nothing tight, sheer or cut out. Relaxed natural pose, eye-level camera. 나이에 맞는 체형, 단정한 옷차림.
 [THIS IMAGE — ending/knight_errant · 엔딩 일러스트 «편력 기사» (무예)]
-Epilogue (에필로그 원문 — 이 장면의 바탕): «문장 없던 방패에 10년 만에 문장이 생겼다. 세 개의 달 아래 지붕 하나. 편력 기사 루나는 약한 이의 편에 서고, 받은 것보다 많이 돌려주고, 길이 끝날 때까지 걷는다. 그리고 그 길은 해마다 한 번, 꼭 평원의 작은 집 문 앞에서 끝난다.»
+Epilogue (에필로그 원문 — 이 장면의 바탕): «로데릭에게 받은 문장 없는 방패에는 이제 문장이 있다. 세 개의 달 아래 지붕 하나. 편력 기사 루나는 약한 이의 편에 서고, 받은 것보다 많이 돌려주고, 길이 끝날 때까지 걷는다. 그리고 그 길은 해마다 한 번, 꼭 평원의 작은 집 문 앞에서 끝난다.»
 Scene: A country road at dawn: Luna as a wandering knight in plain steel-and-black armour with a crimson cloak, sword sheathed, carrying a round shield painted with a simple emblem of one small roof under three moons (no writing), helping an old villager carry a heavy basket.
 Luna is shown as an ADULT WOMAN around 28 years old (ten years after she turned 18): same face and features as the character sheet but mature and calm, same waist-length silver-white straight hair, crimson eyes, gold star sparkles. Dressed modestly (covered shoulders and chest, long sleeves or a cape, long skirt or trousers).
 Costume accent for this ending: crimson red, on a black-and-white base.
@@ -3201,7 +3201,7 @@ text, letters, words, numbers, captions, speech bubbles, labels, signs with writ
 - Costume rule: black-and-white base outfit + exactly ONE accent colour + gold sparkles.
 - Modesty rule (every age, 10 to 28): wholesome and age-appropriate. High or modest neckline, sleeves that cover the shoulders, skirt or trousers well below the knee (ankle-length preferred), nothing tight, sheer or cut out. Relaxed natural pose, eye-level camera. 나이에 맞는 체형, 단정한 옷차림.
 [THIS IMAGE — ending/prima_dancer · 엔딩 일러스트 «무희» (예술/문화)]
-Epilogue (에필로그 원문 — 이 장면의 바탕): «「세 개의 달」은 10년째 같은 주역으로 막을 올린다. 마지막 회전에서 루나의 손끝을 떠나 객석까지 흩날리는 금빛 별을, 관객들은 아직도 무대 장치라고 믿는다. 초연 날 분장실에서 "별이 멈추질 않아" 하고 떨던 아이는 이제 그 별로 안무를 짠다. 객석 뒤편 맨 끝자리는 늘 비워 두고, 그 표는 평원으로 부친다.»
+Epilogue (에필로그 원문 — 이 장면의 바탕): «무용극 「달의 세 자매」는 10년째 같은 주역으로 막을 올린다. 마지막 회전에서 루나의 손끝을 떠나 객석까지 흩날리는 금빛 별을, 관객들은 아직도 무대 장치라고 믿는다. 초연 날 분장실에서 "별이 멈추질 않아" 하고 떨던 아이는 이제 그 별로 안무를 짠다. 객석 뒤편 맨 끝자리는 늘 비워 두고, 그 표는 평원으로 부친다.»
 Scene: A grand theater stage: Luna as the prima dancer in a modest long-sleeved high-neck black-and-white gown with an ankle-length flowing skirt, mid graceful turn, gold star sparkles streaming from her fingertips over the audience; the audience are soft silhouettes and one seat at the very back is empty.
 Luna is shown as an ADULT WOMAN around 28 years old (ten years after she turned 18): same face and features as the character sheet but mature and calm, same waist-length silver-white straight hair, crimson eyes, gold star sparkles. Dressed modestly (covered shoulders and chest, long sleeves or a cape, long skirt or trousers).
 Costume accent for this ending: green, on a black-and-white base.
@@ -3273,7 +3273,7 @@ text, letters, words, numbers, captions, speech bubbles, labels, signs with writ
 - Costume rule: black-and-white base outfit + exactly ONE accent colour + gold sparkles.
 - Modesty rule (every age, 10 to 28): wholesome and age-appropriate. High or modest neckline, sleeves that cover the shoulders, skirt or trousers well below the knee (ankle-length preferred), nothing tight, sheer or cut out. Relaxed natural pose, eye-level camera. 나이에 맞는 체형, 단정한 옷차림.
 [THIS IMAGE — ending/master_smith · 엔딩 일러스트 «명장 대장장이» (생활/상업)]
-Epilogue (에필로그 원문 — 이 장면의 바탕): «도르완 영감의 대장간 간판에는 이제 루나의 이름이 걸려 있다. 벽에는 별철로 벼린 걸작이 은은하게 빛나지만, 정작 가장 많이 나가는 건 평원의 낫이다. "쇠는 서두르는 사람을 알아." 영감에게 들은 말을 루나는 견습생들에게 그대로 해 준다. 끝에 "흠"까지 붙여서.»
+Epilogue (에필로그 원문 — 이 장면의 바탕): «도르완 영감의 대장간 간판에는 이제 루나의 이름이 걸려 있다. 별철 걸작 소문을 듣고 먼 데서 손님들이 찾아오지만, 정작 가장 많이 나가는 건 평원의 낫이다. "때는 쇠가 알려 준다. 들을 줄 알면." 영감에게 들은 말을 루나는 견습생들에게 그대로 해 준다. 끝에 "흠"까지 붙여서.»
 Scene: A blacksmith's forge: Luna as a master smith in a heavy leather apron over a long-sleeved black work shirt, hair tied back, lifts a softly glowing star-metal blade with tongs; simple farm sickles hang on the wall, young apprentices watch from the background, warm sparks.
 Luna is shown as an ADULT WOMAN around 28 years old (ten years after she turned 18): same face and features as the character sheet but mature and calm, same waist-length silver-white straight hair, crimson eyes, gold star sparkles. Dressed modestly (covered shoulders and chest, long sleeves or a cape, long skirt or trousers).
 Costume accent for this ending: gold, on a black-and-white base.
@@ -3381,7 +3381,7 @@ text, letters, words, numbers, captions, speech bubbles, labels, signs with writ
 - Costume rule: black-and-white base outfit + exactly ONE accent colour + gold sparkles.
 - Modesty rule (every age, 10 to 28): wholesome and age-appropriate. High or modest neckline, sleeves that cover the shoulders, skirt or trousers well below the knee (ankle-length preferred), nothing tight, sheer or cut out. Relaxed natural pose, eye-level camera. 나이에 맞는 체형, 단정한 옷차림.
 [THIS IMAGE — ending/orphanage_head · 엔딩 일러스트 «고아원 원장» (신앙)]
-Epilogue (에필로그 원문 — 이 장면의 바탕): «등불의 집은 문을 닫지 않았다. 원장 루나는 새 아이가 오는 첫날 밤이면 지금도 문간에 이불을 깔고 함께 잔다. 리코는 열아홉에 그 집의 첫 선생님이 되었다. 문 닫는 날 그 앞에서 한 약속을 누가 먼저 지켰는지, 둘은 아직도 다툰다.»
+Epilogue (에필로그 원문 — 이 장면의 바탕): «등불의 집 문간에는 10년째 밤새 등불이 켜져 있다. 원장 루나는 새 아이가 오는 첫날 밤이면 지금도 문간에 이불을 깔고 함께 잔다. 문 닫는 날 루나의 소매를 붙잡던 열한 살 리코는 열아홉에 그 집의 첫 선생님이 되었다. 요즘은 둘이 번갈아 문간에서 잔다. 누구 차례인지는 늘 다툰다.»
 Scene: The doorway of an orphanage called "House of Lanterns" (the sign shows only a lantern emblem) at night: Luna as its head kneels to tuck a blanket around a newly arrived small child in warm lantern light; a kind young man (the house's first teacher, about 19) smiles in the background.
 Luna is shown as an ADULT WOMAN around 28 years old (ten years after she turned 18): same face and features as the character sheet but mature and calm, same waist-length silver-white straight hair, crimson eyes, gold star sparkles. Dressed modestly (covered shoulders and chest, long sleeves or a cape, long skirt or trousers).
 Costume accent for this ending: green, on a black-and-white base.
@@ -3453,7 +3453,7 @@ text, letters, words, numbers, captions, speech bubbles, labels, signs with writ
 - Costume rule: black-and-white base outfit + exactly ONE accent colour + gold sparkles.
 - Modesty rule (every age, 10 to 28): wholesome and age-appropriate. High or modest neckline, sleeves that cover the shoulders, skirt or trousers well below the knee (ankle-length preferred), nothing tight, sheer or cut out. Relaxed natural pose, eye-level camera. 나이에 맞는 체형, 단정한 옷차림.
 [THIS IMAGE — ending/medium · 엔딩 일러스트 «영매» (어둠)]
-Epilogue (에필로그 원문 — 이 장면의 바탕): «항구 빵집 「에피와 언니」의 할머니 주인은 평생 동생의 이름을 간판에서 내리지 않았다. 그 빵집을 찾아내 묘지 북쪽 담장까지 갓 구운 빵 냄새를 데려간 사람이 루나였다. 에피가 웃으며 떠난 뒤로, 루나의 집 문간에 걸린 푸른 등불은 길 잃은 이들의 이정표가 되었다. 살아 있는 손님도, 그렇지 않은 손님도 그 문을 똑같이 두드린다.»
+Epilogue (에필로그 원문 — 이 장면의 바탕): «항구 빵집 「에피와 언니」의 할머니 주인은 평생 동생의 이름을 간판에서 내리지 않았다. 그 빵집을 찾아내 묘지 북쪽 담장까지 갓 구운 빵 냄새를 데려간 사람이 루나였다. 에피가 웃으며 떠난 뒤로, 루나의 집 문간에 걸린 푸른 등불은 길 잃은 이들의 이정표가 되었다. 살아 있는 손님은 세 번, 그렇지 않은 손님은 두 번 그 문을 두드린다. 루나는 어느 쪽에도 똑같이 차를 낸다.»
 Scene: Dusk at Luna's doorway, where a blue lantern hangs: Luna as a medium in black-and-white with a gentle smile welcomes a translucent, peaceful, smiling ghost of a little girl in an old-fashioned modest dress (not scary at all) together with a living traveller; soft blue and gold light, a basket of fresh bread.
 Luna is shown as an ADULT WOMAN around 28 years old (ten years after she turned 18): same face and features as the character sheet but mature and calm, same waist-length silver-white straight hair, crimson eyes, gold star sparkles. Dressed modestly (covered shoulders and chest, long sleeves or a cape, long skirt or trousers).
 Costume accent for this ending: deep crimson, on a black-and-white base.
@@ -3527,7 +3527,7 @@ text, letters, words, numbers, captions, speech bubbles, labels, signs with writ
 - Costume rule: black-and-white base outfit + exactly ONE accent colour + gold sparkles.
 - Modesty rule (every age, 10 to 28): wholesome and age-appropriate. High or modest neckline, sleeves that cover the shoulders, skirt or trousers well below the knee (ankle-length preferred), nothing tight, sheer or cut out. Relaxed natural pose, eye-level camera. 나이에 맞는 체형, 단정한 옷차림.
 [THIS IMAGE — ending/mother_reunion · 엔딩 일러스트 «어머니와의 재회» (히든)]
-Epilogue (에필로그 원문 — 이 장면의 바탕): «서리마을의 등불지기는 이제 둘이다. 겨울이면 루나가 흰눈 고개를 넘어가 어머니와 함께 집집마다 등불을 켜고, 봄이면 세라핀이 평원으로 내려와 당신의 부엌에서 감자를 깎는다. 세라핀은 딸을 아스텔이라 부르고 당신은 늘 부르던 이름으로 부르는데, 아이는 두 이름에 똑같이 웃으며 돌아본다. 끊겼던 자장가는 이제 세 사람의 목소리로 끝까지 불린다.»
+Epilogue (에필로그 원문 — 이 장면의 바탕): «서리마을의 등불지기는 이제 둘이다. 겨울이면 루나가 흰눈 고개를 넘어가 어머니와 함께 집집마다 등불을 켜고, 봄이면 세라핀이 평원으로 내려와 당신의 부엌에서 감자를 깎는다. 세라핀은 딸을 아스텔이라 부르고 당신은 늘 부르던 이름으로 부르는데, 루나는 두 이름에 똑같이 웃으며 돌아본다. 끊겼던 자장가는 이제 세 사람의 목소리로 끝까지 불린다.»
 Scene: A snowy northern village at night: adult Luna and her birth mother Serafine, a gentle woman in her late forties with long silver hair and a warm winter cloak, light the street lanterns house by house together, singing softly; warm lantern glow on the snow, gold sparkles drifting.
 Luna is shown as an ADULT WOMAN around 28 years old (ten years after she turned 18): same face and features as the character sheet but mature and calm, same waist-length silver-white straight hair, crimson eyes, gold star sparkles. Dressed modestly (covered shoulders and chest, long sleeves or a cape, long skirt or trousers).
 Costume accent for this ending: gold starlight, on a black-and-white base.
@@ -3599,7 +3599,7 @@ text, letters, words, numbers, captions, speech bubbles, labels, signs with writ
 - Costume rule: black-and-white base outfit + exactly ONE accent colour + gold sparkles.
 - Modesty rule (every age, 10 to 28): wholesome and age-appropriate. High or modest neckline, sleeves that cover the shoulders, skirt or trousers well below the knee (ankle-length preferred), nothing tight, sheer or cut out. Relaxed natural pose, eye-level camera. 나이에 맞는 체형, 단정한 옷차림.
 [THIS IMAGE — ending/cube_true_form · 엔딩 일러스트 «큐브의 정체» (히든)]
-Epilogue (에필로그 원문 — 이 장면의 바탕): «열여덟 생일 밤, 큐브가 나비넥타이를 풀자 하얀 몸통이 눈처럼 녹고 손바닥만 한 금빛 별 하나가 남았다. 아기였던 루나를 품고 하늘을 건너온 별똥별, 땅에 닿던 날 빛을 다 쓰고 남은 마지막 조각. 밤마다 백 번씩 깜박이던 건 하늘에 보내는 "오늘도 무사함"이었고, 백 년 전 판화 속 아이를 지킨 것도 그 별이었다. "이제 아가씨가 알려 주세요. 저는 뭐예요?" "우리 식구." 별은 다시 나비넥타이를 맸고, 10년이 지난 지금도 케이크를 들고 떠다닌다.»
+Epilogue (에필로그 원문 — 이 장면의 바탕): «열여덟 생일 밤, 큐브는 약속대로 나비넥타이 매듭 푸는 법을 루나에게만 알려 주었다. 매듭이 풀리자 하얀 몸통이 눈처럼 녹고 손바닥만 한 금빛 별 하나가 남았다. 하늘에 숨겨진 아기를 열 해 동안 품고 있다가 들판까지 데려다준 별똥별의 마지막 조각. 밤마다 백 번씩 깜박인 건 하늘에 보내는 "오늘도 무사함"이었고, 백 년 전 판화 속 아이 곁을 지킨 것도 이 별이었다. "이제 아가씨가 알려 주세요. 저는 뭐예요?" "우리 식구." 루나가 다시 매 준 나비넥타이는 판화 속 그것처럼 조금 삐뚤었다. 10년이 지난 지금도 큐브는 그 매듭 그대로 케이크를 들고 떠다닌다.»
 Scene: The plains under three moons at night: adult Luna holds in her cupped hands a palm-sized glowing gold star wearing a tiny black bow tie (the true form of Cube, the butler fairy), both smiling; a small birthday cake on a blanket beside her, gold sparkles everywhere.
 Luna is shown as an ADULT WOMAN around 28 years old (ten years after she turned 18): same face and features as the character sheet but mature and calm, same waist-length silver-white straight hair, crimson eyes, gold star sparkles. Dressed modestly (covered shoulders and chest, long sleeves or a cape, long skirt or trousers).
 Costume accent for this ending: gold starlight, on a black-and-white base.
