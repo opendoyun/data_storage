@@ -90,7 +90,7 @@ function npcEntry(key, desc) {
     `[THIS IMAGE — ${key} · NPC 초상 (이벤트 배너)]`,
     desc,
     K.NPC_NOTES[id] ? `Notes: ${K.NPC_NOTES[id]}` : '',
-    'Composition: wide event banner. The character, waist-up, is placed in the LEFT third of the frame looking toward the center; the other two-thirds show the described background, softly blurred with depth of field. Only this one character in focus.',
+    'Composition: wide event banner. The character (waist-up; a small creature is shown whole) is placed in the LEFT third of the frame looking toward the center; the other two-thirds show the described background, softly blurred with depth of field. Only this one character in focus.',
     fmt(...sizeOf(key)));
   return entry(key, 'npc', desc.split(':')[0].trim(), prompt,
     neg(K.NEG_BASE, K.NEG_MODEST, KID_NPCS.has(id) ? K.NEG_MINOR : '', K.NEG_VIOLENCE, 'silver-white haired girl with crimson eyes (the princess must not appear)'));

@@ -88,7 +88,7 @@ const isObj = (x) => !!x && typeof x === 'object' && !Array.isArray(x);
 const int0 = (x) => { const n = Math.floor(Number(x)); return Number.isFinite(n) && n > 0 ? n : 0; };
 const num = (x, d = 0) => { const n = Number(x); return Number.isFinite(n) ? n : d; };
 const str = (x, d = '') => (typeof x === 'string' ? x : d);
-const clampP = (v) => Math.max(-100, Math.min(100, Math.round(num(v))));
+const clampP = (v) => Math.max(-100, Math.min(100, Math.round(num(v)))) || 0;   // -0 → 0
 const PERS_IDS = PERSONALITY.map(p => p.id);
 const STAT_IDS = STATS.map(s => s.id);
 
@@ -113,7 +113,7 @@ function normRun(r, i) {
     endingId: r.endingId, endingName: str(r.endingName, r.endingId), cat: str(r.cat, '기타'), hidden: !!r.hidden,
     runnerUp: isObj(r.runnerUp) ? { id: str(r.runnerUp.id), name: str(r.runnerUp.name) } : null,
     topStats: Array.isArray(r.topStats) ? r.topStats.filter(t => isObj(t) && STAT_IDS.includes(t.id)).map(t => ({ id: t.id, v: int0(t.v) })).slice(0, 4) : [],
-    statSum: int0(r.statSum), trust: Math.round(num(r.trust, 0)),
+    statSum: int0(r.statSum), trust: Math.round(num(r.trust, 0)) || 0,
     counters: isObj(r.counters) ? Object.fromEntries(Object.entries(r.counters).filter(([, v]) => Number.isFinite(Number(v))).map(([k, v]) => [k, int0(v)])) : {},
     persHistory: normPers(r.persHistory),
     near: Array.isArray(r.near) ? r.near.filter(isObj).map(x => ({ id: str(x.id), name: str(x.name), score: Math.round(num(x.score)) })).slice(0, 3) : [],
@@ -144,10 +144,10 @@ export function migrateMeta(raw) {
   }
   const runs = Array.isArray(raw.runs) ? raw.runs.map(normRun).filter(Boolean) : [];
   m.runs = runs.slice(-MAX_RUNS);
-  const endingCount = Object.values(m.endings).reduce((a, r) => a + r.count, 0);
-  m.totalRuns = Math.max(int0(raw.totalRuns), runs.length, endingCount);
   // 엔딩 기록이 없고 회차 요약만 있는 경우: 요약으로 앨범을 복원
   for (const r of runs) if (!m.endings[r.endingId]) m.endings[r.endingId] = normEndingRec(r.endingId, { count: 1, name: r.endingName, cat: r.cat, hidden: r.hidden, firstAt: r.at, lastAt: r.at, last: r });
+  const endingCount = Object.values(m.endings).reduce((a, r) => a + r.count, 0);
+  m.totalRuns = Math.max(int0(raw.totalRuns), runs.length, endingCount);
   m.owned = [...new Set((Array.isArray(raw.owned) ? raw.owned : []).filter(id => typeof id === 'string' && BONUS_MAP[id]))];
   m.shards = int0(raw.shards);
   const spent = m.owned.reduce((a, id) => a + BONUS_MAP[id].cost, 0);

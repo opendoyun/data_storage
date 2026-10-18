@@ -33,6 +33,7 @@ const HELP = `사용법: node tools/gemini/generate.mjs [옵션]
   --out=<dir>           출력 폴더 (기본 game/assets). 테스트는 반드시 임시 폴더를 쓴다
   --refs-from=<dir>     참조 이미지를 읽을 폴더 (기본: --out 과 같음)
   --allow-missing-refs  참조 이미지가 아직 없어도 참조 없이 생성 (기본: 해당 항목 보류)
+  --no-pause            캐릭터 시트가 없을 때도 시트 확인 단계 없이 한 번에 전부 생성 (기본: 시트만 먼저 만들고 멈춤)
   --sheet-ref=<file>    캐릭터 시트 생성 시 사용자 레퍼런스 그림을 함께 첨부 (머리·눈·색 체계 참고용)
   --keep-raw=<dir>      API 원본 이미지를 이 폴더에도 보관 (다시 자르기용)
   --manifest=<file>     매니페스트 경로 (기본 game/assets/manifest.json)
@@ -190,8 +191,12 @@ async function main() {
     inRun.add(p.e.key);
   }
 
+  // 캐릭터 시트를 이번에 처음 만든다면, 시트만 먼저 만들고 멈춘다 (사람이 확인한 뒤 같은 명령을 다시 실행).
+  const sheet = todo.find(p => p.e.group === 'ref');
+  const pauseAfterSheet = sheet && args.pause !== false && todo.some(p => (p.e.refs ?? []).includes(sheet.e.key));
+  if (pauseAfterSheet && !dry) todo = todo.filter(p => p.e.group === 'ref');
+
   if (dry) {
-    const price = priceOf(model || 'pro');
     console.log(`[dry-run] 제미나이 이미지 생성 계획 — API 호출 없음, 파일 쓰기 없음
   매니페스트 : ${manifestPath} (전체 ${manifest.entries.length}개 중 선택 ${sel.length}개)
   출력 폴더  : ${outDir}
@@ -208,9 +213,12 @@ async function main() {
     }
     const blocked = todo.filter(p => p.missingRefs.length);
     if (blocked.length) console.log(`\n  주의: ${blocked.length}장은 참조 이미지가 아직 없어 보류됩니다 (먼저 참조를 생성하거나 --allow-missing-refs).`);
+    if (pauseAfterSheet) console.log(`\n  1단계: 실제 실행은 캐릭터 시트(${sheet.e.key})만 먼저 만들고 멈춥니다. 시트를 확인한 뒤 같은 명령을 다시 실행하면 나머지를 이어서 만듭니다 (--no-pause 로 한 번에).`);
     const minutes = rpm ? Math.ceil(todo.length / rpm) : 0;
-    console.log(`\n  예상 비용(참고): ${todo.length}장 × $${price} ≈ $${(todo.length * price).toFixed(2)} (재생성 여유 ×1.5 ≈ $${(todo.length * price * 1.5).toFixed(2)})` +
-      ` · 예상 시간: 약 ${Math.max(minutes, Math.ceil(todo.length * 25 / concurrency / 60))}분 이상`);
+    const cost = (p) => `$${(todo.length * p).toFixed(2)}`;
+    const est = model ? `${todo.length}장 × $${priceOf(model)} ≈ ${cost(priceOf(model))}` : `${todo.length}장 × $0.039(flash-image) ≈ ${cost(0.039)} ~ × $0.134(pro-image) ≈ ${cost(0.134)}`;
+    console.log(`\n  예상 비용(참고, 작성 시점 공개 단가 · 재생성 여유는 ×1.5): ${est}` +
+      ` · 예상 시간: 약 ${Math.max(minutes, Math.ceil(todo.length * 25 / concurrency / 60))}분 이상 (분당 ${rpm || '무제한'} 기준)`);
     return 0;
   }
 
@@ -288,7 +296,7 @@ async function main() {
         console.log(`  · ${p.e.key}: ${r.status || 'network'} ${msg.slice(0, 80)} → ${fmtMs(wait)} 후 재시도 (${attempts}/${retries})`);
         await sleep(wait); continue;
       }
-      if (r.status === 401 || r.status === 403) shared.fatal = `인증/권한 오류 HTTP ${r.status}: ${msg}`;
+      if (r.status === 401 || r.status === 403 || (r.status === 400 && /API key|API_KEY/i.test(msg))) shared.fatal = `인증/권한 오류 HTTP ${r.status}: ${msg}`;
       if (r.status === 404) shared.fatal = `모델을 찾을 수 없음(${model}) HTTP 404: ${msg}`;
       throw new Error(`HTTP ${r.status || 'network'}: ${msg}${r.status === 0 ? ' (프록시 환경이면 NODE_USE_ENV_PROXY=1 확인)' : ''}`);
     }
@@ -344,6 +352,12 @@ async function main() {
   try { await Promise.all(Array.from({ length: Math.min(concurrency, todo.length) }, worker)); }
   finally { cleanup(); }
 
+  if (pauseAfterSheet && tally.ok) {
+    console.log(`\n[1단계 완료] 캐릭터 시트를 먼저 만들었습니다: ${sheet.path}
+  → 그림을 열어 docs/game-design/character-design.md 와 비교하세요 (은백색 긴 생머리·붉은 눈·흑백 의상·금색 4각 별·나이별 체형).
+  → 마음에 들면 같은 명령을 다시 실행: 나머지를 이 시트를 참조로 이어서 생성합니다.
+  → 다시 뽑으려면: node tools/gemini/generate.mjs --keys=${sheet.e.key} --force`);
+  }
   const notRun = todo.length - tally.ok - tally.error - tally.blocked;
   console.log(`\n완료: 성공 ${tally.ok} · 실패 ${tally.error} · 보류 ${tally.blocked}${notRun ? ` · 미실행 ${notRun}` : ''} · 건너뜀 ${skipped.length} · ${fmtMs(Date.now() - t0)} · 로그 ${logPath}`);
   if (shared.fatal) { console.error(`치명적 오류로 중단: ${shared.fatal}`); return 3; }

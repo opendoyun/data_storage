@@ -107,6 +107,8 @@ export function sniffMime(buf) {
 let _backend = null;
 export function imageBackend() {
   if (_backend) return _backend;
+  const forced = process.env.GEMINI_IMAGE_BACKEND; // 'pillow' | 'imagemagick' (시험·문제 해결용)
+  if (forced === 'pillow' || forced === 'imagemagick') return (_backend = forced);
   const py = spawnSync('python3', ['-I', '-c', 'import PIL'], { encoding: 'utf8' });
   if (py.status === 0) return (_backend = 'pillow');
   const im = spawnSync('convert', ['-version'], { encoding: 'utf8' });

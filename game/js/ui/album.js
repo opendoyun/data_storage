@@ -19,6 +19,8 @@ const catColor = (cat) => CAT_COLORS[cat] ?? '#a79fc4';
 export const esc = (s) => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 export const fmtDate = (iso) => (typeof iso === 'string' && /^\d{4}-\d{2}-\d{2}/.test(iso) ? iso.slice(0, 10).replace(/-/g, '.') : '');
 const gName = (id) => GUARDIANS[id]?.name ?? '보호자';
+const NATIVE = ['첫', '두', '세', '네', '다섯', '여섯', '일곱', '여덟', '아홉', '열'];
+export const ordinal = (n) => (n >= 1 && n <= 10 ? `${NATIVE[n - 1]} 번째` : `${n}번째`);
 const statName = (id) => STATS.find(s => s.id === id)?.name ?? id;
 const COUNTER_NAMES = [['refusals', '거부'], ['forced', '강행'], ['persuaded', '설득'], ['autonomy', '자율'], ['events', '이벤트'], ['collapses', '탈진'], ['adventures', '모험']];
 const STAR_PATH = (x, y, r) => `M${x} ${y - r} Q${x} ${y} ${x + r} ${y} Q${x} ${y} ${x} ${y + r} Q${x} ${y} ${x - r} ${y} Q${x} ${y} ${x} ${y - r}z`;
@@ -34,7 +36,7 @@ function normHistory(list) {
   for (const p of Array.isArray(list) ? list : []) {
     const age = Math.round(Number(p?.age));
     if (!Number.isFinite(age) || age < AGE0 || age > AGE1) continue;
-    byAge.set(age, { age, ...Object.fromEntries(PERSONALITY.map(ax => [ax.id, Math.max(-100, Math.min(100, Math.round(Number(p[ax.id]) || 0)))])) });
+    byAge.set(age, { age, ...Object.fromEntries(PERSONALITY.map(ax => [ax.id, (Math.max(-100, Math.min(100, Math.round(Number(p[ax.id]) || 0))) || 0)])) });
   }
   return [...byAge.values()].sort((a, b) => a.age - b.age);
 }
@@ -44,7 +46,8 @@ const poleOf = (ax, v) => (v > 0 ? ax.pos : v < 0 ? ax.neg : '중간');
 export function renderPersonalityMap(persHistory, opts = {}) {
   const pts = normHistory(persHistory);
   const W = Math.max(300, Math.round(opts.width ?? 560));
-  const L = 78, R = W < 420 ? 62 : 76, T = 6, rowH = 64, gap = 8, B = 34;
+  const narrow = W < 420;
+  const L = narrow ? 68 : 78, R = narrow ? 56 : 76, T = 6, rowH = 64, gap = 8, B = 34;
   const plotW = W - L - R;
   const H = T + PERSONALITY.length * rowH + (PERSONALITY.length - 1) * gap + B;
   const x = (age) => L + (age - AGE0) / (AGE1 - AGE0) * plotW;
@@ -81,7 +84,7 @@ export function renderPersonalityMap(persHistory, opts = {}) {
   });
   // 나이 눈금 + 성장 단계
   const by = T + PERSONALITY.length * rowH + (PERSONALITY.length - 1) * gap;
-  for (let a = AGE0; a <= AGE1; a++) out.push(`<text class="pm-tick" x="${x(a).toFixed(1)}" y="${by + 13}" text-anchor="middle" fill="#a79fc4" font-size="10.5">${a}${a === AGE1 ? '세' : ''}</text>`);
+  for (let a = AGE0; a <= AGE1; a += plotW < 260 ? 2 : 1) out.push(`<text class="pm-tick" x="${x(a).toFixed(1)}" y="${by + 13}" text-anchor="middle" fill="#a79fc4" font-size="10.5">${a}${a === AGE1 ? '세' : ''}</text>`);
   if (plotW >= 220) for (const [a0, a1, nm] of STAGES) out.push(`<text class="pm-stage" x="${((x(a0) + x(a1)) / 2).toFixed(1)}" y="${by + 28}" text-anchor="middle" fill="#7d7599" font-size="10">${nm}</text>`);
   // 나이별 읽기(호버) 영역: 다섯 축 값을 한 번에
   if (opts.interactive !== false) {
@@ -166,7 +169,7 @@ export function detailHTML(e, width = 520) {
       ${e.achieved ? `
         <div class="alb-kv"><span>달성 <b>${e.count}</b>회</span><span>처음 ${esc(fmtDate(e.firstAt))}</span>${e.lastAt && e.lastAt !== e.firstAt ? `<span>최근 ${esc(fmtDate(e.lastAt))}</span>` : ''}</div>
         ${e.epilogue ? `<div class="alb-epi"><h4>10년 후</h4><p>${esc(e.epilogue)}</p></div>` : ''}
-        ${best ? `<div class="alb-best"><h4>가장 빛났던 아이</h4><p><b>${esc(best.name)}</b> · ${esc(gName(best.guardian))}와 함께 · ${best.runNo ? `${best.runNo}번째 아이 · ` : ''}${esc(fmtDate(best.at))}</p>
+        ${best ? `<div class="alb-best"><h4>가장 빛났던 아이</h4><p><b>${esc(best.name)}</b> · ${esc(gName(best.guardian))}와 함께 · ${best.runNo ? `${ordinal(best.runNo)} 아이 · ` : ''}${esc(fmtDate(best.at))}</p>
           ${best.persHistory?.length ? `<h4>그 아이의 성격 지도</h4>${pmBlock(best.persHistory, width, `${best.name}의 성격 지도`)}` : ''}</div>` : ''}
         <div class="alb-eletters"><h4>이 길에서 온 편지 <small>${e.letters.length}${e.lettersTotal ? ` / ${e.lettersTotal}` : ''}</small></h4>
           ${e.letters.length ? `<ul>${e.letters.map(l => `<li><button type="button" class="alb-link" data-act="goto-letter" data-key="${esc(l.key)}">${l.read ? '' : '<i class="alb-dot" aria-label="안 읽음"></i>'}${esc(l.title)}</button></li>`).join('')}</ul>`
@@ -198,7 +201,7 @@ export function runsHTML(runs, width = 520) {
   return `<div class="alb-runs">${runs.slice().reverse().map(r => `
     <article class="alb-run" style="--cat:${catColor(r.cat)}">
       <header>
-        <span class="alb-run-no">${r.no}번째 아이</span>
+        <span class="alb-run-no">${ordinal(r.no)} 아이</span>
         <b class="alb-run-name">${esc(r.name)}</b>
         <span class="alb-run-end">${catChip(r.cat)} <b>${esc(r.endingName)}</b>${r.hidden ? '<span class="alb-badge">히든</span>' : ''}</span>
       </header>
@@ -398,7 +401,7 @@ export function renderNewGameExtras(container, meta, opts = {}) {
           return `<label class="alb-ng-b${on ? ' on' : ''}${dis ? ' dis' : ''}"><input type="checkbox" value="${esc(b.id)}"${on ? ' checked' : ''}${dis ? ' disabled' : ''}><b>${esc(b.name)}</b><small>${esc(b.desc)}</small></label>`;
         }).join('')}</div>` : `<p class="alb-muted">${so.shards > 0 ? `별 조각 ${so.shards}개가 있다. 앨범의 별 조각 상점에서 시작 보너스를 얻을 수 있다.` : '아이를 끝까지 키우면 별 조각이 생기고, 그것으로 시작 보너스를 얻을 수 있다.'}</p>`}
       </section>
-      <section class="alb-ng-sec alb-ng-legacy"><h4>${m.totalRuns + 1}번째 아이</h4>
+      <section class="alb-ng-sec alb-ng-legacy"><h4>${ordinal(m.totalRuns + 1)} 아이</h4>
         ${legacy.length ? `<p>지난 아이들이 이번 8년 어딘가에 스쳐 지나갈지도 모른다.</p><div class="alb-ng-leg">${legacy.map(l => `<span class="alb-pill">${esc(l.name)} <small>${esc(l.endingName)}</small></span>`).join('')}</div>` : '<p class="alb-muted">처음 만나는 아이다.</p>'}
       </section>
     </div>`;
