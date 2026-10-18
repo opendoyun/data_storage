@@ -13,9 +13,14 @@ import { fillName, josa } from './josa.js';
 export const START_AGE = 10;
 export const END_AGE = 18;
 export const SLOTS_PER_MONTH = 3;
-const FOOD_COST = 30;
+// 경제 (GDD 4.5: 항상 약간 부족하게). 식비는 아이가 클수록, 품삯은 나이가 들수록 오른다.
+export const ECONOMY = { foodBase: 30, foodPerYear: 4, wageBase: 0.6, wagePerYear: 0.08 };
+export function livingCost(s) { return ECONOMY.foodBase + ECONOMY.foodPerYear * Math.max(0, s.age - START_AGE); }
+export function wageMult(s) { return ECONOMY.wageBase + ECONOMY.wagePerYear * Math.max(0, s.age - START_AGE); }
+// 이번 달 이 활동의 기본 금전 효과(숙련·출신 보너스 제외). UI 표시와 엔진이 같은 값을 쓴다.
+export function activityGold(s, act) { return act.gold > 0 && act.type === 'work' ? Math.round(act.gold * wageMult(s)) : act.gold; }
 // 이벤트 밀도 (GDD 2: 월 평균 1.5회 목표). 시뮬레이터로 조정.
-export const EVENT_DENSITY = { base: 0.8, second: 0.45, third: 0.12, max: 3 };
+export const EVENT_DENSITY = { base: 0.68, second: 0.26, third: 0.05, max: 3 };
 // 보호자 서사 상한 (GDD 10: 보호자 이벤트는 전체의 15% 이하)
 export const GUARDIAN_EVENT_CAP = 0.15;
 export { GUARDIANS };
@@ -238,8 +243,9 @@ export function runMonth(s, slots) {
     if (act.rel) for (const [k, v] of Object.entries(act.rel)) s.relations[k] = clamp(s.relations[k] + v, 0, 100);
     s.stress = clamp(s.stress + act.stress * (s.stress >= 60 ? 1.1 : 1), 0, 100);
     if (act.rep && r.chance(0.5)) s.reputation = clamp(s.reputation + act.rep, 0, 100);
-    s.gold += act.gold;
-    if (act.gold > 0 && act.type === 'work') s.gold += Math.round(level * 5 + (g.workBonus ? act.gold * g.workBonus : 0)); // 숙련·출신 보너스
+    const baseGold = activityGold(s, act);
+    s.gold += baseGold;
+    if (act.gold > 0 && act.type === 'work') s.gold += Math.round(level * 5 + (g.workBonus ? baseGold * g.workBonus : 0)); // 숙련·출신 보너스
     if (act.id === 'adventure') {
       s.counters.adventures = (s.counters.adventures || 0) + 1;
       if (r.chance(0.25)) { const loot = Math.round(r.int(30, 120) * (g.adventureBonus ? 1.5 : 1)); s.gold += loot; lines.push(`모험에서 보물을 찾았다! (+${loot}G)`); }
@@ -256,7 +262,7 @@ export function runMonth(s, slots) {
   }
   if (g.stressRelief) s.stress = clamp(s.stress - g.stressRelief, 0, 100);
   // 고정비·연금
-  s.gold += g.pension - FOOD_COST;
+  s.gold += g.pension - livingCost(s);
   if (s.gold < 0) {
     lines.push('돈이 모자라 끼니를 줄였다. (체력 -4, 스트레스 +6)');
     applyEffects(s, { 'stat.hp': -4, stress: +6 });

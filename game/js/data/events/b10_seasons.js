@@ -51,7 +51,7 @@ export default [
       { label: '열여덟의 첫눈을 이야기한다', conditions: ['age >= 16'], effects: { trust: +4, 'stat.sens': +3, 'pers.ambit': +2 },
         result: '"열여덟 첫눈엔 내가 어디 있을지 모르잖아." "그럼 편지를 부쳐. 어디서든." 아이는 대답 대신 올해 봉투 겉면에 주소 칸을 그려 넣었다. 칸은 비워 두었다.' },
     ] },
-  { id: 'b10_snow_letter_again', title: '해마다 첫눈', age: [13, 17], month: 11, repeatable: true, weight: 0.6, conditions: ['flag.b10_snow_letter', 'seen.b10_snow_letter_open >= 1'], image: 'bg/room_winter',
+  { id: 'b10_snow_letter_again', title: '해마다 첫눈', age: [13, 17], month: 11, repeatable: true, weight: 1.4, conditions: ['flag.b10_snow_letter', 'seen.b10_snow_letter_open >= 1'], image: 'bg/room_winter',
     text: (s) => {
       const n = (s.seen?.b10_snow_letter_open || 0) + (s.seen?.b10_snow_letter_again || 0) + 1;
       return `첫눈 오는 날 찬장 위 편지를 뜯는 건 이제 이 집의 풍습이다. 올해로 ${ORD[n] || n} 번째다. {name이} 봉투 두 장을 부채처럼 펼쳐 들었다. "작년의 나는 뭐라고 했을까. 이번엔 {call} 것부터 열자."`;

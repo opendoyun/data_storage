@@ -17,6 +17,8 @@ export const ACTIVITIES = [
     gold: -30, stress: 5,  stat: { faith: 6, moral: 4, cult: 1 },   pers: { good: 2, agree: 1 } },
   { id: 'commerce', type: 'edu', name: '상업학원',  desc: '장부와 흥정. 화술·지식.',
     gold: -60, stress: 7,  stat: { elo: 6, int: 3 },                pers: { roman: -2, ambit: 1 } },
+  { id: 'tutor',    type: 'edu', name: '가정교사',  desc: '왕도에서 모셔 온 가정교사. 비싸지만 여러 과목을 한꺼번에 끌어올린다.',
+    gold: -220, stress: 8, stat: { int: 5, cult: 5, eti: 3, elo: 3, sens: 2 }, pers: { ambit: 1, agree: 1 }, rel: { loren: 1 }, minAge: 11 },
   { id: 'farmschool',type:'edu', name: '농업학교',  desc: '땅과 계절을 배운다. 체력·지식·감수성.',
     gold: -25, stress: 4,  stat: { hp: 4, int: 2, sens: 2 },        pers: { ambit: -1, roman: 1 } },
 

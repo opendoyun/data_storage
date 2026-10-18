@@ -143,7 +143,7 @@ function renderMain() {
     <h1>⭐ <span>별의 공주</span> <small style="color:var(--muted);font-weight:400;font-size:13px">v0.2</small></h1>
     <div class="topbar-right">
       <span class="chip">${S.age}세 · ${S.month}월 · ${SEASON_NAME[S.season]} · <b>${stage.name}</b></span>
-      <span class="chip">💰 <b id="t-gold">${S.gold}</b>G <small>(월 연금 +${g.pension} / 식비 -30)</small></span>
+      <span class="chip">💰 <b id="t-gold">${S.gold}</b>G <small>(월 연금 +${g.pension} / 생활비 -${E.livingCost(S)})</small></span>
       <button class="ghost" id="b-shop">🛍 상점</button>
       <button class="ghost" id="b-mg" title="이벤트 판정을 미니게임으로 할지">${settings.minigames && MG ? '🎮 미니게임 켬' : '🎲 자동 판정'}</button>
       <button class="ghost" id="b-save">저장</button><button class="ghost" id="b-loadm">불러오기</button><button class="ghost" id="b-title">타이틀</button>
@@ -209,7 +209,7 @@ function renderCalendar() {
   const ords = ['상순', '중순', '하순'];
   cal.innerHTML = slots.map((id, i) => { const a = ACTIVITY_MAP[id]; return `<div class="slot ${i === activeSlot ? 'active' : ''}" data-i="${i}"><div class="ord">${ords[i]}</div><div class="act">${a.name}</div><div class="meta">${fxText(a)}</div><span class="type ${a.type}">${{ edu: '교육', work: '일', free: '자유' }[a.type]}</span></div>`; }).join('');
   $$('.slot', cal).forEach(el => el.onclick = () => { activeSlot = Number(el.dataset.i); renderCalendar(); });
-  const cost = slots.reduce((a, id) => a + ACTIVITY_MAP[id].gold, 0) + E.GUARDIANS[S.guardian].pension - 30;
+  const cost = slots.reduce((a, id) => a + E.activityGold(S, ACTIVITY_MAP[id]), 0) + E.GUARDIANS[S.guardian].pension - E.livingCost(S);
   $('#costhint').textContent = `이달 예상 수지 ${cost >= 0 ? '+' : ''}${cost}G → 잔액 ${S.gold + cost}G`;
 }
 function fxText(a) {
@@ -224,7 +224,7 @@ function renderActList() {
     ACTIVITIES.filter(a => a.type === type).map(a => {
       const locked = a.minAge && S.age < a.minAge;
       const lv = E.masteryLevel(S.mastery[a.id]);
-      return `<div class="actcard ${locked ? 'locked' : ''}" data-id="${a.id}" title="${esc(a.desc)}"><div class="n"><span>${a.name}</span>${S.mastery[a.id] ? `<span class="lv">Lv.${lv}</span>` : ''}</div><div class="fx">${fxText(a)}</div><div class="fx ${a.gold >= 0 ? 'gold' : 'cost'}">${a.gold >= 0 ? '+' : ''}${a.gold}G${locked ? ` · ${a.minAge}세부터` : ''}</div></div>`;
+      return `<div class="actcard ${locked ? 'locked' : ''}" data-id="${a.id}" title="${esc(a.desc)}"><div class="n"><span>${a.name}</span>${S.mastery[a.id] ? `<span class="lv">Lv.${lv}</span>` : ''}</div><div class="fx">${fxText(a)}</div><div class="fx ${a.gold >= 0 ? 'gold' : 'cost'}">${E.activityGold(S, a) >= 0 ? '+' : ''}${E.activityGold(S, a)}G${locked ? ` · ${a.minAge}세부터` : ''}</div></div>`;
     }).join('')).join('');
   $$('.actcard', box).forEach(el => el.onclick = () => { if (el.classList.contains('locked')) return; slots[activeSlot] = el.dataset.id; activeSlot = (activeSlot + 1) % 3; renderCalendar(); });
 }
